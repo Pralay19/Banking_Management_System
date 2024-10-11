@@ -22,9 +22,10 @@
 
 #define PORT 8080
 
-int authenticate_user(const char* role, const char* user_id, const char* password) {
+long authenticate_user(const char* role, const char* user_id, const char* password) {
     char filename[100], line[256], stored_user[50], stored_pass[50];
     FILE *file;
+    struct flock lock;
     int reqSize;
     // Determine the file based on role
     if (strcmp(role, "customer") == 0) {
@@ -52,7 +53,7 @@ int authenticate_user(const char* role, const char* user_id, const char* passwor
     }
 
     // Open the role-specific file
-    file = fopen(filename, "r");
+    file = fopen(filename, "r+");
     if (file == NULL) {
         perror("Error opening file");
         return 0;
@@ -60,19 +61,40 @@ int authenticate_user(const char* role, const char* user_id, const char* passwor
 
     // Lock the file to avoid concurrent access issues
     int fd = fileno(file);
-    flock(fd, LOCK_SH);  // Shared lock for reading 
 
+
+    long position=0;
     // Searching in the file
     while (fread(&who, sizeof(reqSize), 1, file) == 1) {
-        if (strcmp(who.userid, user_id) == 0 && strcmp(who.password, password) == 0 && who.active!=true) {
-            who.active=true;// making the client-user online
-            fclose(file);
-            return 1;  // Success
+        if (strcmp(who.userid, user_id) == 0 && strcmp(who.password, password) == 0) {
+            if(who.active!=true){
+                position=ftell(file);//storing the current position of the head in file
+                lock.l_type = F_WRLCK;// F_WRLCK for exclusive lock
+                lock.l_whence = SEEK_SET;
+                lock.l_start = position;
+                lock.l_len = reqSize;
+                lock.l_pid = getpid();
+                fcntl(fd, F_SETLK, &lock);// LOCKING the part where user block is present          
+                
+                who.active=true;// making the client-user online
+                // Updating the changes to file
+                fseek(file, -sizeof(reqSize), SEEK_CUR);
+                fwrite(&who, sizeof(reqSize), 1, file);// Writing the changes to file
+                fflush(file);// Ensuring data is written to disk
+                lock.l_type = F_UNLCK; // Unlock
+                if (fcntl(fd, F_SETLCK, &lock) == -1) {
+                    perror("fcntl");
+                    return 1;
+                }
+                fclose(file);
+                return position;  // Success
+            }
+            else{
+                return 0;
+            }
         }
     }
 
-    // Unlock and close file
-    flock(fd, LOCK_UN);
     fclose(file);
     
     return 0;  // Failure
@@ -102,16 +124,20 @@ void handle_client(int client_socket) {
     send(client_socket, "Enter Password: ", 16, 0);
     read(client_socket, password, 50);
 
-    if (authenticate_user(role, user_id, password)) {
+    long position=authenticate_user(role, user_id, password);
+
+    if (position) {
         send(client_socket, "Login Successful\n", 18, 0);
+        char position_str[32];
+        sprintf(position_str, "%ld", position);
         if (strcmp(role, "customer") == 0) {
-            execlp("./customer_program", "customer_program", NULL);
+            execlp("./customer", "customer",user_id,password,position_str, NULL);
         } else if (strcmp(role, "employee") == 0) {
-            execlp("./employee_program", "employee_program", NULL);
+            execlp("./employee", "employee",user_id,password,position_str, NULL);
         } else if (strcmp(role, "manager") == 0) {
-            execlp("./manager_program", "manager_program", NULL);
+            execlp("./manager", "manager",user_id,password,position_str, NULL);
         } else if (strcmp(role, "admin") == 0) {
-            execlp("./admin_program", "admin_program", NULL);
+            execlp("./admin", "admin",user_id,password,position_str, NULL);
         }
     } else {
         send(client_socket, "Invalid credentials or You are already online from another device. Try again.\n", 55, 0);

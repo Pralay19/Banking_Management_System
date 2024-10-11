@@ -7,9 +7,6 @@ public:
     int balance;
     bool active;
 
-    int viewBalance(){
-        return balance;
-    }
 
 };
 
