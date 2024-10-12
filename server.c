@@ -119,9 +119,9 @@ void handle_client(int client_socket) {
         return;
     }
 
-    send(client_socket, "Enter User ID: ", 15, 0);
+    // send(client_socket, "Enter User ID: ", 15, 0);
     read(client_socket, user_id, 50);
-    send(client_socket, "Enter Password: ", 16, 0);
+    // send(client_socket, "Enter Password: ", 16, 0);
     read(client_socket, password, 50);
 
     long position=authenticate_user(role, user_id, password);

@@ -91,8 +91,6 @@ void transfer_funds(long position,string receiver_id,int amount){
     }
 
     printf{"\nNo such Account found. Please check the User Id of the receiver and try again later."}
-
-
 }
 
 void withdraw_money(long position){
@@ -108,7 +106,7 @@ void withdraw_money(long position){
 
     int fd = fileno(file);
     struct Customer who;
-    struct floack lock;
+    struct flock lock;
     fseek(file, position, SEEK_SET);// Setting the head to where user block is
     if (fread(&who, sizeof(struct Customer), 1, file) != 1){
     	perror("Error reading user data");
@@ -172,31 +170,103 @@ void deposit_money(long position) {
 	// Updating the changes to file
     fseek(file, -sizeof(struct Customer), SEEK_CUR);
     fwrite(&who, sizeof(struct Customer), 1, file);// Writing the changes to file
-    fflush(file);// Ensuring data is written to disk
-
-    // Searching in the file
-    // while (fread(&who, sizeof(struct Customer), 1, file) == 1) {
-    //     if (strcmp(who.userid, user_id) == 0 && strcmp(who.password, password) == 0) {          
-    //             who.balance+=amount;
-    //             // Updating the changes to file
-    //             fseek(file, -sizeof(struct Customer), SEEK_CUR);
-    //             fwrite(&who, sizeof(struct Customer), 1, file);// Writing the changes to file
-    //             fflush(file);// Ensuring data is written to disk
-    //             
-    //             return position;  // Success
-            
-    //     }
-    // }
 
     lock.l_type = F_UNLCK; // Unlock the user part
 	if (fcntl(fd, F_SETLCK, &lock) == -1) {
 		perror("fcntl");
 		return 1;
 	}
+	fflush(file);// Ensuring data is written to disk
     fclose(file);
 
     printf("Deposit successful! New balance: $%d\n", who.balance);
 }
+
+void change_password(long position){
+	string pass;
+    printf("Enter your new password: ");
+    scanf("%s", &pass);
+
+    FILE *file = fopen("customers.txt", "r+");
+    if (file == NULL) {
+        perror("Error opening file");
+        return;
+    }
+    int fd = fileno(file);
+    struct Customer who;
+    struct flock lock;
+
+    fseek(file, position, SEEK_SET);// Setting the head to where user block is
+    if (fread(&who, sizeof(struct Customer), 1, file) != 1){
+    	perror("Error reading user data");
+    	return 1;
+	}
+
+	// Locking the user block part
+    lock.l_type = F_WRLCK;
+    lock.l_whence = SEEK_SET;
+    lock.l_start = position;
+    lock.l_len = sizeof(struct Customer);
+    lock.l_pid = getpid();
+    fcntl(fd, F_SETLKW, &lock);
+	who.password=pass;
+	// Updating the changes to file
+    fseek(file, -sizeof(struct Customer), SEEK_CUR);
+    fwrite(&who, sizeof(struct Customer), 1, file);// Writing the changes to file
+
+    lock.l_type = F_UNLCK; // Unlock the user part
+	if (fcntl(fd, F_SETLCK, &lock) == -1) {
+		perror("fcntl");
+		return 1;
+	}
+	fflush(file);// Ensuring data is written to disk
+    fclose(file);
+}
+
+void add_feedback(){
+	string feedback;
+	struct flock lock;
+	printf("Add your FeedBack:\n ");
+	scanf("%s ",feedback);
+	FILE *file = fopen("feedbacks.txt", "r+");
+    if (file == NULL){
+        perror("Error opening file");
+        return 1;
+    }
+    lock.l_type = F_WRLCK;
+    lock.l_whence = SEEK_SET;
+    lock.l_start = position;
+    lock.l_len = sizeof(struct Customer);
+    lock.l_pid = getpid();
+    fcntl(fd, F_SETLKW, &lock);
+    fseek(file, 0, SEEK_END);
+    fwrite(feedback, sizeof(feedback), 1, file);
+    lock.l_type = F_UNLCK; // Unlock the user part
+	if (fcntl(fd, F_SETLCK, &lock) == -1) {
+		perror("fcntl");
+		return 1;
+	}
+	fflush(file);
+    fclose(file);
+}
+
+void view_transaction_history(){
+	FILE *file = fopen("transactions.txt", "r");
+    if (file == NULL) {
+        perror("Error opening file");
+        return;
+    }
+    int fd = fileno(file);
+    struct Transaction trans;
+
+    fseek(file, 0, SEEK_SET);// Setting the head to where user block is
+    if (fread(&trans, sizeof(struct Customer), 1, file) != 1){
+    	perror("Error reading user data");
+    	return 1;
+	}
+	
+}
+
 
 int main(int argc,char *argv[]){
     int choice;
@@ -248,7 +318,7 @@ int main(int argc,char *argv[]){
                 apply_for_loan();
                 break;
             case 6:
-                change_password();
+                change_password(position);
                 break;
             case 7:
                 add_feedback();
