@@ -18,6 +18,8 @@
 #include <stdbool.h>
 #include "customer.h"
 #include "allstructures.h"
+#include "employee.h"
+#include "admin.h"
 
 #define PORT 8080
 
@@ -43,8 +45,10 @@ long authenticate_user(int role, const char* user_id, const char* password) {
         reqSize=sizeof(who);
     }
     else if (role == 4) {
-        strcpy(filename, "admins.txt");
+        //strcpy(filename, "admins.txt");
         struct Admin who;
+        who.userid="pralay11";
+        who.password="123";
         reqSize=sizeof(who);
     }
     else {
@@ -52,7 +56,7 @@ long authenticate_user(int role, const char* user_id, const char* password) {
     }
 
     // Open the role file
-    file = fopen(filename, "r+");
+    file = fopen(filename, "r");
     if (file == NULL) {
         perror("Error opening role file");
         return 0;
@@ -64,20 +68,19 @@ long authenticate_user(int role, const char* user_id, const char* password) {
     // Searching in the file
     while (fread(&who, sizeof(reqSize), 1, file) == 1) {
         if (strcmp(who.userid, user_id) == 0 && strcmp(who.password, password) == 0) {
-            if(who.active!=true){
                 position=ftell(file);//storing the current position of the head in file
-                lock.l_type = F_WRLCK;// F_WRLCK for exclusive lock
+                lock.l_type = F_RDLCK;// F_WRLCK for exclusive lock
                 lock.l_whence = SEEK_SET;
                 lock.l_start = position;
                 lock.l_len = reqSize;
                 lock.l_pid = getpid();
                 fcntl(fd, F_SETLK, &lock);// LOCKING the part where user block is present          
                 
-                who.active=true;// making the client-user online
+                // who.active=true;// making the client-user online
                 // Updating the changes to file
-                fseek(file, -sizeof(reqSize), SEEK_CUR);
-                fwrite(&who, sizeof(reqSize), 1, file);// Writing the changes to file
-                fflush(file);// Ensuring data is written to disk
+                // fseek(file, -sizeof(reqSize), SEEK_CUR);
+                // fwrite(&who, sizeof(reqSize), 1, file);// Writing the changes to file
+                // fflush(file);// Ensuring data is written to disk
                 lock.l_type = F_UNLCK; // Unlock
                 if (fcntl(fd, F_SETLCK, &lock) == -1) {
                     perror("fcntl");
@@ -85,10 +88,6 @@ long authenticate_user(int role, const char* user_id, const char* password) {
                 }
                 fclose(file);
                 return position;  // Success
-            }
-            else{
-                return 0;
-            }
         }
     }
 
@@ -188,7 +187,7 @@ void remove_session(const char *userid) {
     pthread_mutex_unlock(&session_lock);
 }
 
-void *client_handler(void *socket_desc) {
+int *client_handler(void *socket_desc) {
     int client_sock = *(int *)socket_desc;
     free(socket_desc);
 
@@ -197,7 +196,7 @@ void *client_handler(void *socket_desc) {
     int role;
     int sessionid;
 
-    while (1) {
+    while(1) {
         // Receive role, userid, and password
         recv(client_sock, buffer, 1024, 0);
         sscanf(buffer, "%d %s %s", &role, userid, password);
@@ -216,7 +215,7 @@ void *client_handler(void *socket_desc) {
         else{
             snprintf(buffer, sizeof(buffer), "Invalid Credentials! Please try again later.\n");
             send(client_sock, buffer, strlen(buffer), 0);
-            return;
+            continue;
         }
 
 
@@ -321,19 +320,17 @@ void *client_handler(void *socket_desc) {
                     // Add feedback
                     char feedback[100];
                     recv(client_sock, buffer, 1024, 0);
-                    sscanf(buffer, "%s", feedback);
+                    sscanf(feedback, "%s", buffer);
                     add_feedback(feedback);
                 }
                 else if (choice == 8) {
-                    char receiver_id[100];
-                    int amount;
-                    recv(client_sock, buffer, 1024, 0);
-                    sscanf(buffer, "%s %d", receiver_id, &amount);
-                    transfer_funds(position, receiver_id, amount);
+                    // View Transaction History
+                    view_transaction_history();
                 }
                 else if (choice == 9) {
-                    send(client_sock, "Logging out...\n", 15, 0);
                     remove_session(userid);
+                    char*msg1="Logged Out";
+                    send(client_sock,msg1,sizeof(msg1),0);
                     break;
                 }
             }
@@ -341,16 +338,112 @@ void *client_handler(void *socket_desc) {
                 // Employee
                 int choice;
                 sscanf(buffer, "%d", &choice);
+
+            if (choice == 1) { 
+                // Add New Customer
+                char new_customer_id[100], new_customer_password[10];
+                recv(client_sock, buffer, 1024, 0);
+                sscanf(buffer, "%s %s", new_customer_id, new_customer_password);
+                add_new_customer(new_customer_id, new_customer_password); // Calling function from employee.h
+                char *msg = "New customer added successfully.";
+                send(client_sock, msg, strlen(msg), 0);
+
+            } 
+            else if (choice == 2) { 
+                // Modify Customer Details
+                char customer_id[100], new_password[10];
+                recv(client_sock, buffer, 1024, 0);
+                sscanf(buffer, "%s %s", customer_id, new_password);
+                modify_customer_details(customer_id, new_password); // Calling function from employee.h
+                char *msg = "Customer details updated successfully.";
+                send(client_sock, msg, strlen(msg), 0);
+
+            } 
+            else if (choice == 3) { 
+                // Process Loan Application
+                char loan_customer_id[100];
+                int decision; // 1 for Accept, 0 for Reject
+                recv(client_sock, buffer, 1024, 0);
+                sscanf(buffer, "%s %d", loan_customer_id, &decision);
+                process_loan_appl(loan_customer_id, decision == 1); // Calling function from employee.h
+                char *msg;
+                if (decision == 1) {
+                    msg = "Loan application accepted.";
+                } else {
+                    msg = "Loan application rejected.";
+                }
+                send(client_sock, msg, strlen(msg), 0);
+
+            } 
+            else if (choice == 4) { 
+                // View Assigned Loan Applications
+                view_assigned_loan_appl(userid); // Call the function from employee.h
+                char *msg = "Assigned Loan Applications:\n1. Loan #12345 - Pending\n2. Loan #67890 - Approved"; // Placeholder for actual data
+                send(client_sock, msg, strlen(msg), 0);
+
+            } 
+            else if (choice == 5) { 
+                // Change Password
+                char new_password[10];
+                recv(client_sock, buffer, 1024, 0);
+                sscanf(buffer, "%s", new_password);
+                change_password_employee(userid, new_password); // Calling function from employee.h
+                char *msg = "Password changed successfully.";
+                send(client_sock, msg, strlen(msg), 0);
+
+            } 
+            else if (choice == 6) { 
+                // Logout
+                remove_session(userid);
+                char *msg = "Logged Out";
+                send(client_sock, msg, strlen(msg), 0);
+                break;
+
+            } 
+            else {
+                // Invalid choice
+                char *msg = "Invalid option. Please try again.";
+                send(client_sock, msg, strlen(msg), 0);
+            }
             }
             else if(role == 3) {
                 // Manager
                 int choice;
                 sscanf(buffer, "%d", &choice);
             }
-            else if(role == 4) {
+            else if (role == 3) { 
                 // Admin
                 int choice;
                 sscanf(buffer, "%d", &choice);
+
+                if (choice == 1) {
+                    // Add New Employee
+                    char new_employee_id[100], new_employee_password[10];
+                    recv(client_sock, buffer, 1024, 0);
+                    sscanf(buffer, "%s %s", new_employee_id, new_employee_password);
+                    add_new_employee(new_employee_id, new_employee_password);
+                    char *msg = "New employee added successfully.";
+                    send(client_sock, msg, strlen(msg), 0);
+
+                } else if (choice == 2) {
+                    // Add more admin functionalities
+                } else if (choice == 3) {
+                    // Logout
+                    remove_session(userid);
+                    char *msg = "Logged Out";
+                    send(client_sock, msg, strlen(msg), 0);
+                    break;
+
+                } else {
+                    // Invalid choice
+                    char *msg = "Invalid option. Please try again.";
+                    send(client_sock, msg, strlen(msg), 0);
+                }
+            }
+            else if(role == 5) {
+                // Exit the program
+                close(client_sock);
+                return 1;
 
             }
             else {
@@ -361,8 +454,8 @@ void *client_handler(void *socket_desc) {
             }
         }
     }
-    close(client_sock);
-    return;
+    
+    return 0;
 }
 
 int main() {
@@ -398,7 +491,7 @@ int main() {
 
         if (pthread_create(&client_thread, NULL, client_handler, (void *)new_sock) < 0) {
             perror("Could not create thread");
-            return 1;
+            return 0;
         }
         printf("Client connected\n");
     }

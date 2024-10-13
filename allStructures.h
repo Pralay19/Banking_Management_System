@@ -10,8 +10,6 @@ public:
     char userid[100];
     char password[10];
     int balance;
-
-
 };
 
 struct Transaction{
@@ -46,9 +44,6 @@ public:
     char password[10];
     int loanAppl[1024];
 
-    int *viewLoanAppl(){
-        return loanAppl;
-    }
 
 };
 

@@ -7,6 +7,7 @@
 
 ====================================
 */
+
 #ifndef CUSTOMER_H
 #define CUSTOMER_H
 
@@ -38,7 +39,7 @@ int view_account_balance(long position) {
     lock.l_type = F_RDLCK;
     lock.l_whence = SEEK_SET;
     lock.l_start = position;
-    lock.l_len = sizeof(struct Customer);
+    lock.l_len = sizeof(struct Customer);   
     lock.l_pid = getpid();
     fcntl(fd, F_SETLKW, &lock);
 
