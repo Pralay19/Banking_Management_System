@@ -8,6 +8,7 @@
 ====================================
 */
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <arpa/inet.h>
@@ -30,9 +31,8 @@ void customer_program(int sock, const char *sessionid) {
             scanf("%d", &amount);
             snprintf(buffer, sizeof(buffer), "%d", amount);
             send(sock, buffer, strlen(buffer), 0);
-            int balance_after;
-            recv(sock,balance_after,sizeof(balance_after),0);
-            printf("\nAvailable Balance: $%d",balance_after);
+            recv(sock,buffer,sizeof(buffer),0);
+            printf("\n%s",buffer);
         }
         else if (choice == 4) {
         	// Transfer Funds
@@ -47,17 +47,14 @@ void customer_program(int sock, const char *sessionid) {
         }
         else if (choice == 1) {
         	// View Balance
-            snprintf(buffer, sizeof(buffer), "%s %d", receiver_id, amount);
-            send(sock, buffer, strlen(buffer), 0);
-            int balance_after;
-            recv(sock,balance_after,sizeof(balance_after),0);
-            printf("\nAvailable Balance: $%d",balance_after);
+            //snprintf() puts something->buffer
+            recv(sock,buffer,sizeof(buffer),0);
+            printf("\n%s",buffer);
         }
         else if (choice == 3) {
         	// Withdraw Money
-            printf("\nEnter receiver ID: ");
-            scanf("%s", receiver_id);
-            printf("\nEnter amount to transfer: ");
+    
+            printf("\nEnter amount: ");
             scanf("%d", &amount);
             snprintf(buffer, sizeof(buffer), "%d", amount);
             send(sock, buffer, strlen(buffer), 0);
@@ -73,7 +70,7 @@ void customer_program(int sock, const char *sessionid) {
             scanf("%d", &amount);
             snprintf(buffer, sizeof(buffer), "%s %d", receiver_id, amount);
             send(sock, buffer, strlen(buffer), 0);
-            recv();
+            // recv();
         }
         else if (choice == 6) {
         	// Change Password
@@ -98,7 +95,7 @@ void customer_program(int sock, const char *sessionid) {
         	// View transaction History
             printf("\nTransaction History: ");
             send(sock, buffer, strlen(buffer), 0);
-            recv();
+            // recv();
         }
         else if (choice == 9) {
         	// Locgout
@@ -211,13 +208,16 @@ void admin_program(int sock, const char *sessionid) {
             send(sock, buffer, strlen(buffer), 0);
             recv(sock, buffer, sizeof(buffer), 0);
             printf("\n%s", buffer);
+            //printf("\nASS");
         } 
         else if (choice == 2) {
             // Logout
             snprintf(buffer, sizeof(buffer), "%d", choice);
             send(sock, buffer, strlen(buffer), 0);
             printf("Logging out...\n");
-            recv(sock, buffer, sizeof(buffer), 0);
+            // remove it from session
+
+            printf("\nLogged Out");
             break;
         } 
         else {
@@ -255,7 +255,7 @@ int main() {
     while(1) {
         printf("Enter role \n1.Customer\n2. Employee\n3. Manager\n4. Administrator\n5. Exit ");
         scanf("%d", &role_choice);
-        else if(role_choice==5) {
+        if(role_choice==5) {
     		// Exit the Client
     		close(sock);
     		return 0;
@@ -270,7 +270,7 @@ int main() {
         send(sock, buffer, strlen(buffer), 0);
 
         recv(sock, buffer, 1024, 0);
-        printf("Scoket: %s\n", sock);
+        printf("Socket: %d\n", sock);
 
         if (strstr(buffer, "successful")) {
         	if(role_choice==1){
@@ -280,7 +280,7 @@ int main() {
         		employee_program(sock, sessionid);
         	}
         	else if(role_choice==3) {
-        		manager_program(sock, sessionid);
+        		// manager_program(sock, sessionid);
         	}
         	else if(role_choice==4) {
         		admin_program(sock, sessionid);

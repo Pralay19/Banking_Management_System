@@ -51,7 +51,6 @@ struct Manager{
 };
 
 struct Admin{
-public:
     char userid[100];
     char password[10];
 

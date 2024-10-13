@@ -17,7 +17,7 @@
 #include <sys/file.h>
 #include <stdbool.h>
 #include "customer.h"
-#include "allstructures.h"
+#include "allStructures.h"
 #include "employee.h"
 #include "admin.h"
 
@@ -27,69 +27,201 @@ long authenticate_user(int role, const char* user_id, const char* password) {
     char filename[100], line[256], stored_user[50], stored_pass[50];
     FILE *file;
     struct flock lock;
+
     int reqSize;
     // Determine the file based on role
     if (role == 1) {
         strcpy(filename, "customers.txt");
-        struct Customer who;
-        reqSize=sizeof(who);
+        // Open the role file
+        file = fopen(filename, "r");
+        if (file == NULL) {
+            perror("Error opening role file");
+            return 0;
+        }
+        struct Customer who1;
+        reqSize=sizeof(who1);
+
+        int fd = fileno(file);
+
+        long position=0;
+        // Searching in the file
+        while (fread(&who1, sizeof(reqSize), 1, file) == 1) {
+            if (strcmp(who1.userid, user_id) == 0 && strcmp(who1.password, password) == 0) {
+                    position=ftell(file);//storing the current position of the head in file
+                    lock.l_type = F_RDLCK;// F_WRLCK for exclusive lock
+                    lock.l_whence = SEEK_SET;
+                    lock.l_start = position;
+                    lock.l_len = reqSize;
+                    lock.l_pid = getpid();
+                    fcntl(fd, F_SETLK, &lock);// LOCKING the part where user block is present          
+                    
+                    // who.active=true;// making the client-user online
+                    // Updating the changes to file
+                    // fseek(file, -sizeof(reqSize), SEEK_CUR);
+                    // fwrite(&who, sizeof(reqSize), 1, file);// Writing the changes to file
+                    // fflush(file);// Ensuring data is written to disk
+                    lock.l_type = F_UNLCK; // Unlock
+                    if (fcntl(fd, F_SETLK, &lock) == -1) {
+                        perror("fcntl");
+                        return 1;
+                    }
+                    fclose(file);
+                    return position;  // Success
+            }
+        }
     }
     else if (role == 2) {
         strcpy(filename, "employees.txt");
-        struct Employee who;
-        reqSize=sizeof(who);
+        // Open the role file
+        file = fopen(filename, "r");
+        if (file == NULL) {
+            perror("Error opening role file");
+            return 0;
+        }
+        struct Employee who2;
+        reqSize=sizeof(who2);
+        int fd = fileno(file);
+
+        long position=0;
+        // Searching in the file
+        while (fread(&who2, sizeof(reqSize), 1, file) == 1) {
+            if (strcmp(who2.userid, user_id) == 0 && strcmp(who2.password, password) == 0) {
+                    position=ftell(file);//storing the current position of the head in file
+                    lock.l_type = F_RDLCK;// F_WRLCK for exclusive lock
+                    lock.l_whence = SEEK_SET;
+                    lock.l_start = position;
+                    lock.l_len = reqSize;
+                    lock.l_pid = getpid();
+                    fcntl(fd, F_SETLK, &lock);// LOCKING the part where user block is present          
+                    
+                    // who.active=true;// making the client-user online
+                    // Updating the changes to file
+                    // fseek(file, -sizeof(reqSize), SEEK_CUR);
+                    // fwrite(&who, sizeof(reqSize), 1, file);// Writing the changes to file
+                    // fflush(file);// Ensuring data is written to disk
+                    lock.l_type = F_UNLCK; // Unlock
+                    if (fcntl(fd, F_SETLK, &lock) == -1) {
+                        perror("fcntl");
+                        return 1;
+                    }
+                    fclose(file);
+                    return position;  // Success
+            }
+        }
     }
     else if (role == 3) {
         strcpy(filename, "managers.txt");
-        struct Manager who;
-        reqSize=sizeof(who);
+        // Open the role file
+        file = fopen(filename, "r");
+        if (file == NULL) {
+            perror("Error opening role file");
+            return 0;
+        }
+        struct Manager who3;
+        reqSize=sizeof(who3);
+        int fd = fileno(file);
+
+        long position=0;
+        // Searching in the file
+        while (fread(&who3, sizeof(reqSize), 1, file) == 1) {
+            if (strcmp(who3.userid, user_id) == 0 && strcmp(who3.password, password) == 0) {
+                    position=ftell(file);//storing the current position of the head in file
+                    lock.l_type = F_RDLCK;// F_WRLCK for exclusive lock
+                    lock.l_whence = SEEK_SET;
+                    lock.l_start = position;
+                    lock.l_len = reqSize;
+                    lock.l_pid = getpid();
+                    fcntl(fd, F_SETLK, &lock);// LOCKING the part where user block is present          
+                    
+                    // who.active=true;// making the client-user online
+                    // Updating the changes to file
+                    // fseek(file, -sizeof(reqSize), SEEK_CUR);
+                    // fwrite(&who, sizeof(reqSize), 1, file);// Writing the changes to file
+                    // fflush(file);// Ensuring data is written to disk
+                    lock.l_type = F_UNLCK; // Unlock
+                    if (fcntl(fd, F_SETLK, &lock) == -1) {
+                        perror("fcntl");
+                        return 1;
+                    }
+                    fclose(file);
+                    return position;  // Success
+            }
+        }
     }
     else if (role == 4) {
-        //strcpy(filename, "admins.txt");
-        struct Admin who;
-        who.userid="pralay11";
-        who.password="123";
-        reqSize=sizeof(who);
+        strcpy(filename, "admins.txt");
+        // Open the role file
+        file = fopen(filename, "r");
+        if (file == NULL) {
+            perror("Error opening role file");
+            return 0;
+        }
+        struct Admin who4;
+        strcpy(who4.userid,"pralay11");
+        strcpy(who4.password,"123");
+        reqSize=sizeof(who4);
+        return 1; // TEMPORARY! FOR CHECKING ONLY.
+        int fd = fileno(file);
+
+        long position=0;
+        // Searching in the file
+        while (fread(&who4, sizeof(reqSize), 1, file) == 1) {
+            if (strcmp(who4.userid, user_id) == 0 && strcmp(who4.password, password) == 0) {
+                    position=ftell(file);//storing the current position of the head in file
+                    lock.l_type = F_RDLCK;// F_WRLCK for exclusive lock
+                    lock.l_whence = SEEK_SET;
+                    lock.l_start = position;
+                    lock.l_len = reqSize;
+                    lock.l_pid = getpid();
+                    fcntl(fd, F_SETLK, &lock);// LOCKING the part where user block is present          
+                    
+                    // who.active=true;// making the client-user online
+                    // Updating the changes to file
+                    // fseek(file, -sizeof(reqSize), SEEK_CUR);
+                    // fwrite(&who, sizeof(reqSize), 1, file);// Writing the changes to file
+                    // fflush(file);// Ensuring data is written to disk
+                    lock.l_type = F_UNLCK; // Unlock
+                    if (fcntl(fd, F_SETLK, &lock) == -1) {
+                        perror("fcntl");
+                        return 1;
+                    }
+                    fclose(file);
+                    return position;  // Success
+            }
+        }
     }
     else {
         return 0; // Invalid role
     }
 
-    // Open the role file
-    file = fopen(filename, "r");
-    if (file == NULL) {
-        perror("Error opening role file");
-        return 0;
-    }
+    // int fd = fileno(file);
 
-    int fd = fileno(file);
-
-    long position=0;
-    // Searching in the file
-    while (fread(&who, sizeof(reqSize), 1, file) == 1) {
-        if (strcmp(who.userid, user_id) == 0 && strcmp(who.password, password) == 0) {
-                position=ftell(file);//storing the current position of the head in file
-                lock.l_type = F_RDLCK;// F_WRLCK for exclusive lock
-                lock.l_whence = SEEK_SET;
-                lock.l_start = position;
-                lock.l_len = reqSize;
-                lock.l_pid = getpid();
-                fcntl(fd, F_SETLK, &lock);// LOCKING the part where user block is present          
+    // long position=0;
+    // // Searching in the file
+    // while (fread(&who, sizeof(reqSize), 1, file) == 1) {
+    //     if (strcmp(who.userid, user_id) == 0 && strcmp(who.password, password) == 0) {
+    //             position=ftell(file);//storing the current position of the head in file
+    //             lock.l_type = F_RDLCK;// F_WRLCK for exclusive lock
+    //             lock.l_whence = SEEK_SET;
+    //             lock.l_start = position;
+    //             lock.l_len = reqSize;
+    //             lock.l_pid = getpid();
+    //             fcntl(fd, F_SETLK, &lock);// LOCKING the part where user block is present          
                 
-                // who.active=true;// making the client-user online
-                // Updating the changes to file
-                // fseek(file, -sizeof(reqSize), SEEK_CUR);
-                // fwrite(&who, sizeof(reqSize), 1, file);// Writing the changes to file
-                // fflush(file);// Ensuring data is written to disk
-                lock.l_type = F_UNLCK; // Unlock
-                if (fcntl(fd, F_SETLCK, &lock) == -1) {
-                    perror("fcntl");
-                    return 1;
-                }
-                fclose(file);
-                return position;  // Success
-        }
-    }
+    //             // who.active=true;// making the client-user online
+    //             // Updating the changes to file
+    //             // fseek(file, -sizeof(reqSize), SEEK_CUR);
+    //             // fwrite(&who, sizeof(reqSize), 1, file);// Writing the changes to file
+    //             // fflush(file);// Ensuring data is written to disk
+    //             lock.l_type = F_UNLCK; // Unlock
+    //             if (fcntl(fd, F_SETLK, &lock) == -1) {
+    //                 perror("fcntl");
+    //                 return 1;
+    //             }
+    //             fclose(file);
+    //             return position;  // Success
+    //     }
+    // }
 
     fclose(file);
     
@@ -146,7 +278,7 @@ struct Session {
     int sessionid;
 };
 
-struct Session activeSessions[MAX_CLIENTS];
+struct Session activeSessions[100];
 int sessionCount = 0;
 
 pthread_mutex_t session_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -187,7 +319,7 @@ void remove_session(const char *userid) {
     pthread_mutex_unlock(&session_lock);
 }
 
-int *client_handler(void *socket_desc) {
+void *client_handler(void *socket_desc) {
     int client_sock = *(int *)socket_desc;
     free(socket_desc);
 
@@ -233,23 +365,26 @@ int *client_handler(void *socket_desc) {
                 sscanf(buffer, "%d", &choice);
 
                 if (choice == 2) {
+                    // Deposit Money
                     int amount;
                     recv(client_sock, buffer, 1024, 0);
                     sscanf(buffer, "%d", &amount);
                     int result=deposit_money(position, amount);
-                    send(client_sock,result,sizeof(result),0);
+                    char*msg1="\nAvailable Balance: $";
+                    snprintf(buffer,sizeof(buffer),"%s%d",msg1,result);
+                    send(client_sock,buffer,sizeof(buffer),0);
                 }
                 else if (choice == 1) {
-                    char receiver_id[100];
-                    int amount;
-                    recv(client_sock, buffer, 1024, 0);
-                    snprintf(buffer,sizeof(buffer), "%s %d", receiver_id, amount);
+                    // View account balance
+                    //sscanf() takes out of buffer->variable
                     int result=view_account_balance(position);
-                    send(client_sock,result,sizeof(result),0);
+                    char*msg1="\nAvailable Balance: $";
+                    snprintf(buffer,sizeof(buffer),"%s%d",msg1,result);
+                    send(client_sock,buffer,sizeof(buffer),0);                
                 }
                 else if (choice == 3) {
                     // Withdraw Money
-                    char receiver_id[100];
+                    
                     int amount;
                     recv(client_sock, buffer, 1024, 0);
                     sscanf(buffer, "%d",&amount);
@@ -271,6 +406,7 @@ int *client_handler(void *socket_desc) {
                     }
                 }
                 else if (choice == 4) {
+                    // Transfer Funds
                     char receiver_id[100];
                     int amount;
                     recv(client_sock, buffer, 1024, 0);
@@ -280,8 +416,8 @@ int *client_handler(void *socket_desc) {
                         if(result>0){
                             char tempBuffer[1024];
                             char * msg1="\nTransfer successful. Available Balance: $";
-                            snprintf(tempbuffer,sizeof(tempbuffer),"%s%d",msg1,result);
-                            send(client_sock,tempbuffer,sizeof(tempbuffer),0);
+                            snprintf(tempBuffer,sizeof(tempBuffer),"%s%d",msg1,result);
+                            send(client_sock,tempBuffer,sizeof(tempBuffer),0);
                         }
                         else{
                             char *msg1="Insuffecient Balance.";
@@ -339,79 +475,79 @@ int *client_handler(void *socket_desc) {
                 int choice;
                 sscanf(buffer, "%d", &choice);
 
-            if (choice == 1) { 
-                // Add New Customer
-                char new_customer_id[100], new_customer_password[10];
-                recv(client_sock, buffer, 1024, 0);
-                sscanf(buffer, "%s %s", new_customer_id, new_customer_password);
-                add_new_customer(new_customer_id, new_customer_password); // Calling function from employee.h
-                char *msg = "New customer added successfully.";
-                send(client_sock, msg, strlen(msg), 0);
+                if (choice == 1) { 
+                    // Add New Customer
+                    char new_customer_id[100], new_customer_password[10];
+                    recv(client_sock, buffer, 1024, 0);
+                    sscanf(buffer, "%s %s", new_customer_id, new_customer_password);
+                    add_new_customer(new_customer_id, new_customer_password); // Calling function from employee.h
+                    char *msg = "New customer added successfully.";
+                    send(client_sock, msg, strlen(msg), 0);
 
-            } 
-            else if (choice == 2) { 
-                // Modify Customer Details
-                char customer_id[100], new_password[10];
-                recv(client_sock, buffer, 1024, 0);
-                sscanf(buffer, "%s %s", customer_id, new_password);
-                modify_customer_details(customer_id, new_password); // Calling function from employee.h
-                char *msg = "Customer details updated successfully.";
-                send(client_sock, msg, strlen(msg), 0);
+                } 
+                else if (choice == 2) { 
+                    // Modify Customer Details
+                    char customer_id[100], new_password[10];
+                    recv(client_sock, buffer, 1024, 0);
+                    sscanf(buffer, "%s %s", customer_id, new_password);
+                    modify_customer_details(customer_id, new_password); // Calling function from employee.h
+                    char *msg = "Customer details updated successfully.";
+                    send(client_sock, msg, strlen(msg), 0);
 
-            } 
-            else if (choice == 3) { 
-                // Process Loan Application
-                char loan_customer_id[100];
-                int decision; // 1 for Accept, 0 for Reject
-                recv(client_sock, buffer, 1024, 0);
-                sscanf(buffer, "%s %d", loan_customer_id, &decision);
-                process_loan_appl(loan_customer_id, decision == 1); // Calling function from employee.h
-                char *msg;
-                if (decision == 1) {
-                    msg = "Loan application accepted.";
-                } else {
-                    msg = "Loan application rejected.";
+                } 
+                else if (choice == 3) { 
+                    // Process Loan Application
+                    char loan_customer_id[100];
+                    int decision; // 1 for Accept, 0 for Reject
+                    recv(client_sock, buffer, 1024, 0);
+                    sscanf(buffer, "%s %d", loan_customer_id, &decision);
+                    process_loan_appl(loan_customer_id, decision == 1); // Calling function from employee.h
+                    char *msg;
+                    if (decision == 1) {
+                        msg = "Loan application accepted.";
+                    } else {
+                        msg = "Loan application rejected.";
+                    }
+                    send(client_sock, msg, strlen(msg), 0);
+
+                } 
+                else if (choice == 4) { 
+                    // View Assigned Loan Applications
+                    view_assigned_loan_appl(userid); // Call the function from employee.h
+                    char *msg = "Assigned Loan Applications:\n1. Loan #12345 - Pending\n2. Loan #67890 - Approved"; // Placeholder for actual data
+                    send(client_sock, msg, strlen(msg), 0);
+
+                } 
+                else if (choice == 5) { 
+                    // Change Password
+                    char new_password[10];
+                    recv(client_sock, buffer, 1024, 0);
+                    sscanf(buffer, "%s", new_password);
+                    change_password_employee(position, new_password);
+                    char *msg = "Password changed successfully.";
+                    send(client_sock, msg, strlen(msg), 0);
+
+                } 
+                else if (choice == 6) { 
+                    // Logout
+                    remove_session(userid);
+                    char *msg = "Logged Out";
+                    send(client_sock, msg, strlen(msg), 0);
+                    break;
+
+                } 
+                else {
+                    // Invalid choice
+                    char *msg = "Invalud option. Please try again.";
+                    send(client_sock, msg, strlen(msg), 0);
                 }
-                send(client_sock, msg, strlen(msg), 0);
-
-            } 
-            else if (choice == 4) { 
-                // View Assigned Loan Applications
-                view_assigned_loan_appl(userid); // Call the function from employee.h
-                char *msg = "Assigned Loan Applications:\n1. Loan #12345 - Pending\n2. Loan #67890 - Approved"; // Placeholder for actual data
-                send(client_sock, msg, strlen(msg), 0);
-
-            } 
-            else if (choice == 5) { 
-                // Change Password
-                char new_password[10];
-                recv(client_sock, buffer, 1024, 0);
-                sscanf(buffer, "%s", new_password);
-                change_password_employee(userid, new_password); // Calling function from employee.h
-                char *msg = "Password changed successfully.";
-                send(client_sock, msg, strlen(msg), 0);
-
-            } 
-            else if (choice == 6) { 
-                // Logout
-                remove_session(userid);
-                char *msg = "Logged Out";
-                send(client_sock, msg, strlen(msg), 0);
-                break;
-
-            } 
-            else {
-                // Invalid choice
-                char *msg = "Invalid option. Please try again.";
-                send(client_sock, msg, strlen(msg), 0);
-            }
             }
             else if(role == 3) {
                 // Manager
                 int choice;
                 sscanf(buffer, "%d", &choice);
             }
-            else if (role == 3) { 
+            else if (role == 4) { 
                 // Admin
                 int choice;
                 sscanf(buffer, "%d", &choice);
@@ -422,40 +558,41 @@ int *client_handler(void *socket_desc) {
                     recv(client_sock, buffer, 1024, 0);
                     sscanf(buffer, "%s %s", new_employee_id, new_employee_password);
                     add_new_employee(new_employee_id, new_employee_password);
-                    char *msg = "New employee added successfully.";
-                    send(client_sock, msg, strlen(msg), 0);
+                    char msg1[100]= "New Employee Added.";
+                    //printf("%s",msg1);
+                    send(client_sock, msg1, sizeof(msg1), 0);
 
                 } else if (choice == 2) {
-                    // Add more admin functionalities
-                } else if (choice == 3) {
                     // Logout
-                    remove_session(userid);
-                    char *msg = "Logged Out";
-                    send(client_sock, msg, strlen(msg), 0);
-                    break;
+                    // remove_session(userid);
+                    // char *msg = "Logged Out";
+                    // send(client_sock, msg, strlen(msg), 0);
+                    // break;
+                } else if (choice == 3) {
+                    // Other functionalities
 
                 } else {
                     // Invalid choice
-                    char *msg = "Invalid option. Please try again.";
-                    send(client_sock, msg, strlen(msg), 0);
+                    char *msg1 = "Invalid option. Please try again.";
+                    send(client_sock, msg1, strlen(msg1), 0);
                 }
             }
             else if(role == 5) {
                 // Exit the program
                 close(client_sock);
-                return 1;
+                return NULL;
 
             }
             else {
                 // Invalid Role
-                char* msg="Invalid role selected. Please choose from the following role.";
-                send();
+                char* msg1="Invalid role selected. Please choose from the following role.";
+                send(client_sock, msg1,sizeof(msg1),0);
                 continue;
             }
         }
     }
     
-    return 0;
+    return NULL;
 }
 
 int main() {
@@ -479,7 +616,7 @@ int main() {
         return 1;
     }
 
-    listen(server_sock, MAX_CLIENTS);
+    listen(server_sock, 100);
 
     printf("Waiting for connections...\n");
     c = sizeof(struct sockaddr_in);
@@ -501,6 +638,6 @@ int main() {
         return 1;
     }
 
-    close(server_sock);
+    
     return 0;
 }

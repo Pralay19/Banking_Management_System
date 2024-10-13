@@ -24,7 +24,7 @@ int view_account_balance(long position) {
 	FILE *file = fopen("customers.txt", "r");
     if (file == NULL) {
         perror("Error opening file");
-        return;
+        return 0;
     }
 
     int fd = fileno(file);
@@ -44,7 +44,7 @@ int view_account_balance(long position) {
     fcntl(fd, F_SETLKW, &lock);
 
     lock.l_type = F_UNLCK; // Unlock the user part
-    if (fcntl(fd, F_SETLCK, &lock) == -1) {
+    if (fcntl(fd, F_SETLK, &lock) == -1) {
         perror("fcntl");
         return 1;
     }
@@ -101,7 +101,7 @@ int transfer_funds(long position,char* receiver_id,int amount){
             fseek(file, -sizeof(struct Customer), SEEK_CUR);
             fwrite(&recvr, sizeof(struct Customer), 1, file);// Writing the changes to file
             lockr.l_type = F_UNLCK; // Unlock the receiver part
-    		if (fcntl(fd, F_SETLCK, &lockr) == -1) {
+    		if (fcntl(fd, F_SETLK, &lockr) == -1) {
         		perror("fcntl");
         		return 0;
     		}
@@ -111,7 +111,7 @@ int transfer_funds(long position,char* receiver_id,int amount){
             fwrite(&sender, sizeof(struct Customer), 1, file);// Writing the changes to file
             fflush(file);// Ensuring data is written to disk
             locks.l_type = F_UNLCK; // Unlock the sender part
-    		if (fcntl(fd, F_SETLCK, &locks) == -1) {
+    		if (fcntl(fd, F_SETLK, &locks) == -1) {
         		perror("fcntl");
         		return 0;
     		}
@@ -123,10 +123,7 @@ int transfer_funds(long position,char* receiver_id,int amount){
     return 0; // Fail
 }
 
-int withdraw_money(long position){
-	int amount;
-    printf("Enter amount to Withdraw: ");
-    scanf("%d", &amount);
+int withdraw_money(long position,int amount){
 
     FILE *file = fopen("customers.txt", "r+");
     if (file == NULL) {
@@ -158,7 +155,7 @@ int withdraw_money(long position){
     fwrite(&who, sizeof(struct Customer), 1, file);// Writing the changes to file
     fflush(file);// Ensuring data is written to disk
     lock.l_type = F_UNLCK; // Unlock the user part
-    if (fcntl(fd, F_SETLCK, &lock) == -1) {
+    if (fcntl(fd, F_SETLK, &lock) == -1) {
         perror("fcntl");
         return 0;
     }
@@ -197,7 +194,7 @@ int deposit_money(long position,int amount) {
     fwrite(&who, sizeof(struct Customer), 1, file);// Writing the changes to file
 
     lock.l_type = F_UNLCK; // Unlock the user part
-	if (fcntl(fd, F_SETLCK, &lock) == -1) {
+	if (fcntl(fd, F_SETLK, &lock) == -1) {
 		perror("fcntl");
 		return 0;
 	}
@@ -209,82 +206,83 @@ int deposit_money(long position,int amount) {
 
 int change_password(long position,char*password){
 
-    FILE *file = fopen("customers.txt", "r+");
-    if (file == NULL) {
-        perror("Error opening file");
-        return 0;
-    }
-    int fd = fileno(file);
-    struct Customer who;
-    struct flock lock;
+    // FILE *file = fopen("customers.txt", "r+");
+    // if (file == NULL) {
+    //     perror("Error opening file");
+    //     return 0;
+    // }
+    // int fd = fileno(file);
+    // struct Customer who;
+    // struct flock lock;
 
-    fseek(file, position, SEEK_SET);// Setting the head to where user block is
-    if (fread(&who, sizeof(struct Customer), 1, file) != 1){
-    	perror("Error reading user data");
-    	return 0;
-	}
+    // fseek(file, position, SEEK_SET);// Setting the head to where user block is
+    // if (fread(&who, sizeof(struct Customer), 1, file) != 1){
+    // 	perror("Error reading user data");
+    // 	return 0;
+	// }
 
-	// Locking the user block part
-    lock.l_type = F_WRLCK;
-    lock.l_whence = SEEK_SET;
-    lock.l_start = position;
-    lock.l_len = sizeof(struct Customer);
-    lock.l_pid = getpid();
-    fcntl(fd, F_SETLKW, &lock);
-	who.password=password;
-	// Updating the changes to file
-    fseek(file, -sizeof(struct Customer), SEEK_CUR);
-    fwrite(&who, sizeof(struct Customer), 1, file);// Writing the changes to file
+	// // Locking the user block part
+    // lock.l_type = F_WRLCK;
+    // lock.l_whence = SEEK_SET;
+    // lock.l_start = position;
+    // lock.l_len = sizeof(struct Customer);
+    // lock.l_pid = getpid();
+    // fcntl(fd, F_SETLKW, &lock);
+	// strcpy(who.password, password);
+	// // Updating the changes to file
+    // fseek(file, -sizeof(struct Customer), SEEK_CUR);
+    // fwrite(&who, sizeof(struct Customer), 1, file);// Writing the changes to file
 
-    lock.l_type = F_UNLCK; // Unlock the user part
-	if (fcntl(fd, F_SETLCK, &lock) == -1) {
-		perror("fcntl");
-		return 0;
-	}
-	fflush(file);// Ensuring data is written to disk
-    fclose(file);
-    return 1;
+    // lock.l_type = F_UNLCK; // Unlock the user part
+	// if (fcntl(fd, F_SETLK, &lock) == -1) {
+	// 	perror("fcntl");
+	// 	return 0;
+	// }
+	// fflush(file);// Ensuring data is written to disk
+    // fclose(file);
+    // return 1;
 }
 
 void add_feedback(char*feedback){
 
-	struct flock lock;
-	FILE *file = fopen("feedbacks.txt", "r+");
-    if (file == NULL){
-        perror("Error opening file");
-        return;
-    }
-    lock.l_type = F_WRLCK;
-    lock.l_whence = SEEK_SET;
-    lock.l_start = position;
-    lock.l_len = sizeof(struct Customer);
-    lock.l_pid = getpid();
-    fcntl(fd, F_SETLKW, &lock);
-    fseek(file, 0, SEEK_END);
-    fwrite(feedback, sizeof(feedback), 1, file);
-    lock.l_type = F_UNLCK; // Unlock the user part
-	if (fcntl(fd, F_SETLCK, &lock) == -1) {
-		perror("fcntl");
-		return;
-	}
-	fflush(file);
-    fclose(file);
+	// struct flock lock;
+	// FILE *file = fopen("feedbacks.txt", "r+");
+    // if (file == NULL){
+    //     perror("Error opening file");
+    //     return;
+    // }
+    // int fd=fileno(file);
+    // lock.l_type = F_WRLCK;
+    // lock.l_whence = SEEK_END;
+    // lock.l_start = 0;
+    // lock.l_len = sizeof(struct Customer);
+    // lock.l_pid = getpid();
+    // fcntl(fd, F_SETLKW, &lock);
+    // fseek(file, 0, SEEK_END);
+    // fwrite(feedback, sizeof(feedback), 1, file);
+    // lock.l_type = F_UNLCK; // Unlock the user part
+	// if (fcntl(fd, F_SETLK, &lock) == -1) {
+	// 	perror("fcntl");
+	// 	return;
+	// }
+	// fflush(file);
+    // fclose(file);
 }
 
 void view_transaction_history(){
-	FILE *file = fopen("transactions.txt", "r");
-    if (file == NULL) {
-        perror("Error opening file");
-        return;
-    }
-    int fd = fileno(file);
-    struct Transaction trans;
+	// FILE *file = fopen("transactions.txt", "r");
+    // if (file == NULL) {
+    //     perror("Error opening file");
+    //     return;
+    // }
+    // int fd = fileno(file);
+    // struct Transaction trans;
 
-    fseek(file, 0, SEEK_SET);// Setting the head to where user block is
-    if (fread(&trans, sizeof(struct Customer), 1, file) != 1){
-    	perror("Error reading user data");
-    	return 1;
-	}
+    // fseek(file, 0, SEEK_SET);// Setting the head to where user block is
+    // if (fread(&trans, sizeof(struct Customer), 1, file) != 1){
+    // 	perror("Error reading user data");
+    // 	return;
+	// }
 	
 }
 
