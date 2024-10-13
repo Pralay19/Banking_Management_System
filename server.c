@@ -11,39 +11,38 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <arpa/inet.h>
+#include <pthread.h>
 #include <fcntl.h>
 #include <sys/file.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-
-#include "allStructures.h"
+#include <stdbool.h>
+#include "customer.h"
+#include "allstructures.h"
 
 #define PORT 8080
 
-long authenticate_user(const char* role, const char* user_id, const char* password) {
+long authenticate_user(int role, const char* user_id, const char* password) {
     char filename[100], line[256], stored_user[50], stored_pass[50];
     FILE *file;
     struct flock lock;
     int reqSize;
     // Determine the file based on role
-    if (strcmp(role, "customer") == 0) {
+    if (role == 1) {
         strcpy(filename, "customers.txt");
         struct Customer who;
         reqSize=sizeof(who);
     }
-    else if (strcmp(role, "employee") == 0) {
+    else if (role == 2) {
         strcpy(filename, "employees.txt");
         struct Employee who;
         reqSize=sizeof(who);
     }
-    else if (strcmp(role, "manager") == 0) {
+    else if (role == 3) {
         strcpy(filename, "managers.txt");
         struct Manager who;
         reqSize=sizeof(who);
     }
-    else if (strcmp(role, "admin") == 0) {
+    else if (role == 4) {
         strcpy(filename, "admins.txt");
         struct Admin who;
         reqSize=sizeof(who);
@@ -52,16 +51,14 @@ long authenticate_user(const char* role, const char* user_id, const char* passwo
         return 0; // Invalid role
     }
 
-    // Open the role-specific file
+    // Open the role file
     file = fopen(filename, "r+");
     if (file == NULL) {
-        perror("Error opening file");
+        perror("Error opening role file");
         return 0;
     }
 
-    // Lock the file to avoid concurrent access issues
     int fd = fileno(file);
-
 
     long position=0;
     // Searching in the file
@@ -100,90 +97,317 @@ long authenticate_user(const char* role, const char* user_id, const char* passwo
     return 0;  // Failure
 }
 
-void handle_client(int client_socket) {
-    char buffer[1024] = {0};
-    char *welcome_message = "Choose your role:\n1. Customer\n2. Employee\n3. Manager\n4. Administrator\n";
-    char user_id[50], password[50];
+// void handle_client(int client_socket) {
+//     char buffer[1024] = {0};
+//     char *welcome_message = "Choose your role:\n1. Customer\n2. Employee\n3. Manager\n4. Administrator\n";
+//     char user_id[50], password[50];
     
-    send(client_socket, welcome_message, strlen(welcome_message), 0);
-    read(client_socket, buffer, 1024);
-    int choice = atoi(buffer);
+//     send(client_socket, welcome_message, strlen(welcome_message), 0);
+//     read(client_socket, buffer, 1024);
+//     int choice = atoi(buffer);
     
-    char *role;
-    if (choice == 1) role = "customer";
-    else if (choice == 2) role = "employee";
-    else if (choice == 3) role = "manager";
-    else if (choice == 4) role = "admin";
-    else {
-        send(client_socket, "Invalid choice.\n", 15, 0);
-        return;
-    }
+//     char *role;
+//     if (choice == 1) role = "customer";
+//     else if (choice == 2) role = "employee";
+//     else if (choice == 3) role = "manager";
+//     else if (choice == 4) role = "admin";
+//     else {
+//         send(client_socket, "Invalid choice.\n", 15, 0);
+//         return;
+//     }
 
-    // send(client_socket, "Enter User ID: ", 15, 0);
-    read(client_socket, user_id, 50);
-    // send(client_socket, "Enter Password: ", 16, 0);
-    read(client_socket, password, 50);
+//     // send(client_socket, "Enter User ID: ", 15, 0);
+//     read(client_socket, user_id, 50);
+//     // send(client_socket, "Enter Password: ", 16, 0);
+//     read(client_socket, password, 50);
 
-    long position=authenticate_user(role, user_id, password);
+//     long position=authenticate_user(role, user_id, password);
 
-    if (position) {
-        send(client_socket, "Login Successful\n", 18, 0);
-        char position_str[32];
-        sprintf(position_str, "%ld", position);
-        if (strcmp(role, "customer") == 0) {
-            execlp("./customer", "customer",user_id,password,position_str, NULL);
-        } else if (strcmp(role, "employee") == 0) {
-            execlp("./employee", "employee",user_id,password,position_str, NULL);
-        } else if (strcmp(role, "manager") == 0) {
-            execlp("./manager", "manager",user_id,password,position_str, NULL);
-        } else if (strcmp(role, "admin") == 0) {
-            execlp("./admin", "admin",user_id,password,position_str, NULL);
+//     if (position) {
+//         send(client_socket, "Login Successful\n", 18, 0);
+//         char position_str[32];
+//         sprintf(position_str, "%ld", position);
+//         if (strcmp(role, "customer") == 0) {
+//             execlp("./customer", "customer",user_id,password,position_str, NULL);
+//         } else if (strcmp(role, "employee") == 0) {
+//             execlp("./employee", "employee",user_id,password,position_str, NULL);
+//         } else if (strcmp(role, "manager") == 0) {
+//             execlp("./manager", "manager",user_id,password,position_str, NULL);
+//         } else if (strcmp(role, "admin") == 0) {
+//             execlp("./admin", "admin",user_id,password,position_str, NULL);
+//         }
+//     } else {
+//         send(client_socket, "Invalid credentials or You are already online from another device. Try again.\n", 55, 0);
+//     }
+// }
+
+
+struct Session {
+    char userid[100];
+    int sessionid;
+};
+
+struct Session activeSessions[MAX_CLIENTS];
+int sessionCount = 0;
+
+pthread_mutex_t session_lock = PTHREAD_MUTEX_INITIALIZER;
+
+bool isOnline(const char *userid) {
+    pthread_mutex_lock(&session_lock);
+    for (int i = 0; i < sessionCount; i++) {
+        if (strcmp(activeSessions[i].userid, userid) == 0) {
+            pthread_mutex_unlock(&session_lock);
+            return true;
         }
-    } else {
-        send(client_socket, "Invalid credentials or You are already online from another device. Try again.\n", 55, 0);
     }
+    pthread_mutex_unlock(&session_lock);
+    return false;
+}
+
+int add_session(const char *userid) {
+    pthread_mutex_lock(&session_lock);
+    int sessionid = rand();
+    strcpy(activeSessions[sessionCount].userid, userid);
+    activeSessions[sessionCount].sessionid = sessionid;
+    sessionCount++;
+    pthread_mutex_unlock(&session_lock);
+    return sessionid;
+}
+
+void remove_session(const char *userid) {
+    pthread_mutex_lock(&session_lock);
+    for (int i = 0; i < sessionCount; i++) {
+        if (strcmp(activeSessions[i].userid, userid) == 0) {
+            for (int j = i; j < sessionCount - 1; j++) {
+                activeSessions[j] = activeSessions[j + 1];
+            }
+            sessionCount--;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&session_lock);
+}
+
+void *client_handler(void *socket_desc) {
+    int client_sock = *(int *)socket_desc;
+    free(socket_desc);
+
+    char buffer[1024];
+    char userid[100], password[10];
+    int role;
+    int sessionid;
+
+    while (1) {
+        // Receive role, userid, and password
+        recv(client_sock, buffer, 1024, 0);
+        sscanf(buffer, "%d %s %s", &role, userid, password);
+
+        if (isOnline(userid)) {
+            char *msg = "User already logged in.\n";
+            send(client_sock, msg, strlen(msg), 0);
+            continue;
+        }
+
+        // Authenticate user
+        long position=authenticate_user(role,userid,password);
+        if(position){
+            // That means user exists so don't do anything
+        }
+        else{
+            snprintf(buffer, sizeof(buffer), "Invalid Credentials! Please try again later.\n");
+            send(client_sock, buffer, strlen(buffer), 0);
+            return;
+        }
+
+
+        sessionid = add_session(userid);
+        snprintf(buffer, sizeof(buffer), "Login successful. Session ID: %d\n", sessionid);
+        send(client_sock, buffer, strlen(buffer), 0);
+
+        while (1) {
+            recv(client_sock, buffer, 1024, 0);  // Receive request
+
+            // Process client request based on role
+            if (role == 1) {  
+                // Customer
+                int choice;
+                sscanf(buffer, "%d", &choice);
+
+                if (choice == 2) {
+                    int amount;
+                    recv(client_sock, buffer, 1024, 0);
+                    sscanf(buffer, "%d", &amount);
+                    int result=deposit_money(position, amount);
+                    send(client_sock,result,sizeof(result),0);
+                }
+                else if (choice == 1) {
+                    char receiver_id[100];
+                    int amount;
+                    recv(client_sock, buffer, 1024, 0);
+                    snprintf(buffer,sizeof(buffer), "%s %d", receiver_id, amount);
+                    int result=view_account_balance(position);
+                    send(client_sock,result,sizeof(result),0);
+                }
+                else if (choice == 3) {
+                    // Withdraw Money
+                    char receiver_id[100];
+                    int amount;
+                    recv(client_sock, buffer, 1024, 0);
+                    sscanf(buffer, "%d",&amount);
+                    int result=withdraw_money(position,amount);
+                    if(result){
+                        if(result>0){
+                            char*msg1="\nAvailable Balance: $";
+                            snprintf(buffer,sizeof(buffer),"%s%d",msg1,result);
+                            send(client_sock,buffer,sizeof(buffer),0);
+                        }
+                        else{
+                            char*msg1="\nInsufficient Balance.";
+                            send(client_sock,msg1,sizeof(msg1),0);
+                        }
+                    }
+                    else{
+                        char*msg1="\nERROR opening file";
+                        send(client_sock,msg1,sizeof(msg1),0);
+                    }
+                }
+                else if (choice == 4) {
+                    char receiver_id[100];
+                    int amount;
+                    recv(client_sock, buffer, 1024, 0);
+                    sscanf(buffer, "%s %d", receiver_id, &amount);
+                    int result=transfer_funds(position, receiver_id, amount);
+                    if(result){
+                        if(result>0){
+                            char tempBuffer[1024];
+                            char * msg1="\nTransfer successful. Available Balance: $";
+                            snprintf(tempbuffer,sizeof(tempbuffer),"%s%d",msg1,result);
+                            send(client_sock,tempbuffer,sizeof(tempbuffer),0);
+                        }
+                        else{
+                            char *msg1="Insuffecient Balance.";
+                            send(client_sock,msg1,sizeof(msg1),0);
+                        }
+                    }
+                    else{
+                        char *msg1="\nNo such Account found. Please check the User Id of the receiver and try again later.";
+                        send(client_sock,msg1,sizeof(msg1),0);
+                    }
+                }
+                else if (choice == 5) {
+                    // Aplly for Loan
+                    char receiver_id[100];
+                    int amount;
+                    recv(client_sock, buffer, 1024, 0);
+                    sscanf(buffer, "%s %d", receiver_id, &amount);
+                    transfer_funds(position, receiver_id, amount);
+                }
+                else if (choice == 6) {
+                    // Change Password
+                    char password[100];
+                    recv(client_sock, buffer, 1024, 0);
+                    sscanf(buffer, "%s", password);
+                    int result=change_password(position,password);
+                    if(result){
+                        char*msg1="\nPassword changed successfully.";
+                        send(client_sock,msg1,sizeof(msg1),0);
+                    }
+                    else{
+                        char*msg1="\nError in database";
+                        send(client_sock,msg1,sizeof(msg1),0);
+                    }
+                }
+                else if (choice == 7) {
+                    // Add feedback
+                    char feedback[100];
+                    recv(client_sock, buffer, 1024, 0);
+                    sscanf(buffer, "%s", feedback);
+                    add_feedback(feedback);
+                }
+                else if (choice == 8) {
+                    char receiver_id[100];
+                    int amount;
+                    recv(client_sock, buffer, 1024, 0);
+                    sscanf(buffer, "%s %d", receiver_id, &amount);
+                    transfer_funds(position, receiver_id, amount);
+                }
+                else if (choice == 9) {
+                    send(client_sock, "Logging out...\n", 15, 0);
+                    remove_session(userid);
+                    break;
+                }
+            }
+            else if(role == 2) {
+                // Employee
+                int choice;
+                sscanf(buffer, "%d", &choice);
+            }
+            else if(role == 3) {
+                // Manager
+                int choice;
+                sscanf(buffer, "%d", &choice);
+            }
+            else if(role == 4) {
+                // Admin
+                int choice;
+                sscanf(buffer, "%d", &choice);
+
+            }
+            else {
+                // Invalid Role
+                char* msg="Invalid role selected. Please choose from the following role.";
+                send();
+                continue;
+            }
+        }
+    }
+    close(client_sock);
+    return;
 }
 
 int main() {
-    int server_fd, new_socket;
-    struct sockaddr_in address;
-    int addrlen = sizeof(address);
-    
-    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-        perror("Socket failed");
-        exit(EXIT_FAILURE);
+    int server_sock, client_sock, *new_sock;
+    struct sockaddr_in server, client;
+    socklen_t c;
+
+    // Create socket
+    server_sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_sock == -1) {
+        printf("Could not create socket\n");
+        return 1;
     }
 
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT);
+    server.sin_family = AF_INET;
+    server.sin_addr.s_addr = INADDR_ANY;
+    server.sin_port = htons(PORT);
 
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
+    if (bind(server_sock, (struct sockaddr *)&server, sizeof(server)) < 0) {
         perror("Bind failed");
-        exit(EXIT_FAILURE);
+        return 1;
     }
 
-    if (listen(server_fd, 3) < 0) {
-        perror("Listen failed");
-        exit(EXIT_FAILURE);
-    }
+    listen(server_sock, MAX_CLIENTS);
 
-    printf("Server started, waiting for connections...\n");
+    printf("Waiting for connections...\n");
+    c = sizeof(struct sockaddr_in);
 
-    while (1) {
-        if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
-            perror("Accept failed");
-            exit(EXIT_FAILURE);
+    while ((client_sock = accept(server_sock, (struct sockaddr *)&client, &c))) {
+        pthread_t client_thread;
+        new_sock = malloc(1);
+        *new_sock = client_sock;
+
+        if (pthread_create(&client_thread, NULL, client_handler, (void *)new_sock) < 0) {
+            perror("Could not create thread");
+            return 1;
         }
-
-        if (fork() == 0) {
-            handle_client(new_socket);
-            close(new_socket);
-            exit(0);
-        } else {
-            close(new_socket);
-        }
+        printf("Client connected\n");
     }
 
+    if (client_sock < 0) {
+        perror("Accept failed");
+        return 1;
+    }
+
+    close(server_sock);
     return 0;
 }

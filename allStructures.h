@@ -1,11 +1,15 @@
+#ifndef ALLSTRUCTURES_H
+#define ALLSTRUCTURES_H
+
+#include<stdbool.h>
 #include<string.h>
 #include<fcntl.h>
+
 struct Customer {
 public:
-    string userid[100];
-    string password[10];
+    char userid[100];
+    char password[10];
     int balance;
-    bool active;
 
 
 };
@@ -13,12 +17,11 @@ public:
 struct Transaction{
 public:
     int unique_id;
-    string userid[100];
-    string transaction_type[50];
-    string receiver_id[100];
+    char userid[100];
+    char transaction_type[50];
+    char receiver_id[100];
     int amount;
     int balance_after;
-
 
 };
 void update_history(struct Transaction trans){
@@ -39,10 +42,9 @@ void update_history(struct Transaction trans){
 
 struct Employee{
 public:
-    string userid[100];
-    string password[10];
+    char userid[100];
+    char password[10];
     int loanAppl[1024];
-    bool active;
 
     int *viewLoanAppl(){
         return loanAppl;
@@ -52,16 +54,16 @@ public:
 
 struct Manager{
 public:
-    string userid[100];
-    string password[10];
-    bool active;
+    char userid[100];
+    char password[10];
 
 };
 
 struct Admin{
 public:
-    string userid[100];
-    string password[10];
-    bool active;
+    char userid[100];
+    char password[10];
 
 };
+
+#endif

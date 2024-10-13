@@ -1,12 +1,15 @@
 /* 
 ====================================
-* PROGRAM: customer.c
+* PROGRAM: customer.h
 * AUTHOR: PRALAY D. SAW
 * ROLLNO: MT2024119
 * DESCRIPTION:
 
 ====================================
 */
+#ifndef CUSTOMER_H
+#define CUSTOMER_H
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,12 +19,40 @@
 
 #include "allStructures.h"
 
-void view_account_balance(struct Customer custm) {
-	int result=custm.balance;
-    printf("Account Balance: %d\n",result);
+int view_account_balance(long position) {
+	FILE *file = fopen("customers.txt", "r");
+    if (file == NULL) {
+        perror("Error opening file");
+        return;
+    }
+
+    int fd = fileno(file);
+    struct Customer who;
+    struct flock lock;
+    fseek(file, position, SEEK_SET);// Setting the head to where user block is
+    if (fread(&who, sizeof(struct Customer), 1, file) != 1){
+        perror("Error reading user data");
+        return 1;
+    }
+    // Locking the user block part
+    lock.l_type = F_RDLCK;
+    lock.l_whence = SEEK_SET;
+    lock.l_start = position;
+    lock.l_len = sizeof(struct Customer);
+    lock.l_pid = getpid();
+    fcntl(fd, F_SETLKW, &lock);
+
+    lock.l_type = F_UNLCK; // Unlock the user part
+    if (fcntl(fd, F_SETLCK, &lock) == -1) {
+        perror("fcntl");
+        return 1;
+    }
+    fclose(file);
+
+    return who.balance;
 }
 
-void transfer_funds(long position,string receiver_id,int amount){
+int transfer_funds(long position,char* receiver_id,int amount){
 	struct Customer recvr;
 	struct Customer sender;
 	struct flock locks;
@@ -30,7 +61,7 @@ void transfer_funds(long position,string receiver_id,int amount){
 	FILE *file = fopen("customers.txt", "r+");
     if (file == NULL) {
         perror("Error opening file");
-        return;
+        return 0;
     }
     int fd = fileno(file);
 
@@ -45,12 +76,11 @@ void transfer_funds(long position,string receiver_id,int amount){
     fseek(file, position, SEEK_SET);// Setting the head to where user block is
     if (fread(&sender, sizeof(struct Customer), 1, file) != 1){
     	perror("Error reading user data");
-    	return 1;
+    	return 0;
 	}
 	// Checking if sender has suffecient balance or not
 	if(amount>sender.balance){
-		printf("You have insuffecient balance! \nBalance: $%d",sender.balance);
-		return;
+		return -1; // Fail
 	}
 	long positionRec=0;
 	// searching receiver block in the file
@@ -72,7 +102,7 @@ void transfer_funds(long position,string receiver_id,int amount){
             lockr.l_type = F_UNLCK; // Unlock the receiver part
     		if (fcntl(fd, F_SETLCK, &lockr) == -1) {
         		perror("fcntl");
-        		return 1;
+        		return 0;
     		}
 
             // Updating changes of sender to file
@@ -82,18 +112,17 @@ void transfer_funds(long position,string receiver_id,int amount){
             locks.l_type = F_UNLCK; // Unlock the sender part
     		if (fcntl(fd, F_SETLCK, &locks) == -1) {
         		perror("fcntl");
-        		return 1;
+        		return 0;
     		}
             fclose(file);
-            printf("\nTransfer Successful! Available Balance: $%d",sender.balance);
-            return;
+            return sender.balance; // Success
         }
     }
 
-    printf{"\nNo such Account found. Please check the User Id of the receiver and try again later."}
+    return 0; // Fail
 }
 
-void withdraw_money(long position){
+int withdraw_money(long position){
 	int amount;
     printf("Enter amount to Withdraw: ");
     scanf("%d", &amount);
@@ -101,7 +130,7 @@ void withdraw_money(long position){
     FILE *file = fopen("customers.txt", "r+");
     if (file == NULL) {
         perror("Error opening file");
-        return;
+        return 0;
     }
 
     int fd = fileno(file);
@@ -110,11 +139,10 @@ void withdraw_money(long position){
     fseek(file, position, SEEK_SET);// Setting the head to where user block is
     if (fread(&who, sizeof(struct Customer), 1, file) != 1){
     	perror("Error reading user data");
-    	return 1;
+    	return 0;
 	}
 	if(amount>who.balance){
-		printf("You have insuffecient balance.\nAvailable Balance: $%d",who.balance);
-		return;
+		return -1;
 	}
 	// Locking the user block part
     lock.l_type = F_WRLCK;
@@ -131,22 +159,18 @@ void withdraw_money(long position){
     lock.l_type = F_UNLCK; // Unlock the user part
     if (fcntl(fd, F_SETLCK, &lock) == -1) {
         perror("fcntl");
-        return 1;
+        return 0;
     }
     fclose(file);
-
-    printf("Withdrawal successful. Please collect your cash. \nNew balance: $%d\n", who.balance);
+    return who.balance;
 }
 
-void deposit_money(long position) {
-    int amount;
-    printf("Enter amount to deposit: ");
-    scanf("%d", &amount);
+int deposit_money(long position,int amount) {
 
     FILE *file = fopen("customers.txt", "r+");
     if (file == NULL) {
         perror("Error opening file");
-        return;
+        return 0;
     }
 
     int fd = fileno(file);
@@ -156,7 +180,7 @@ void deposit_money(long position) {
     fseek(file, position, SEEK_SET);// Setting the head to where user block is
     if (fread(&who, sizeof(struct Customer), 1, file) != 1){
     	perror("Error reading user data");
-    	return 1;
+    	return 0;
 	}
 
 	// Locking the user block part
@@ -174,23 +198,20 @@ void deposit_money(long position) {
     lock.l_type = F_UNLCK; // Unlock the user part
 	if (fcntl(fd, F_SETLCK, &lock) == -1) {
 		perror("fcntl");
-		return 1;
+		return 0;
 	}
 	fflush(file);// Ensuring data is written to disk
     fclose(file);
 
-    printf("Deposit successful! New balance: $%d\n", who.balance);
+    return who.balance;
 }
 
-void change_password(long position){
-	string pass;
-    printf("Enter your new password: ");
-    scanf("%s", &pass);
+int change_password(long position,char*password){
 
     FILE *file = fopen("customers.txt", "r+");
     if (file == NULL) {
         perror("Error opening file");
-        return;
+        return 0;
     }
     int fd = fileno(file);
     struct Customer who;
@@ -199,7 +220,7 @@ void change_password(long position){
     fseek(file, position, SEEK_SET);// Setting the head to where user block is
     if (fread(&who, sizeof(struct Customer), 1, file) != 1){
     	perror("Error reading user data");
-    	return 1;
+    	return 0;
 	}
 
 	// Locking the user block part
@@ -209,7 +230,7 @@ void change_password(long position){
     lock.l_len = sizeof(struct Customer);
     lock.l_pid = getpid();
     fcntl(fd, F_SETLKW, &lock);
-	who.password=pass;
+	who.password=password;
 	// Updating the changes to file
     fseek(file, -sizeof(struct Customer), SEEK_CUR);
     fwrite(&who, sizeof(struct Customer), 1, file);// Writing the changes to file
@@ -217,21 +238,20 @@ void change_password(long position){
     lock.l_type = F_UNLCK; // Unlock the user part
 	if (fcntl(fd, F_SETLCK, &lock) == -1) {
 		perror("fcntl");
-		return 1;
+		return 0;
 	}
 	fflush(file);// Ensuring data is written to disk
     fclose(file);
+    return 1;
 }
 
-void add_feedback(){
-	string feedback;
+void add_feedback(char*feedback){
+
 	struct flock lock;
-	printf("Add your FeedBack:\n ");
-	scanf("%s ",feedback);
 	FILE *file = fopen("feedbacks.txt", "r+");
     if (file == NULL){
         perror("Error opening file");
-        return 1;
+        return;
     }
     lock.l_type = F_WRLCK;
     lock.l_whence = SEEK_SET;
@@ -244,7 +264,7 @@ void add_feedback(){
     lock.l_type = F_UNLCK; // Unlock the user part
 	if (fcntl(fd, F_SETLCK, &lock) == -1) {
 		perror("fcntl");
-		return 1;
+		return;
 	}
 	fflush(file);
     fclose(file);
@@ -267,73 +287,73 @@ void view_transaction_history(){
 	
 }
 
+#endif
+// int main(int argc,char *argv[]){
+//     int choice;
+//     string user_id=argv[1];
+//     string password=argv[2];
+//     char *position_str = argv[3];
+//     long position = strtol(position_str, NULL, 10);// Position of the user block in file
 
-int main(int argc,char *argv[]){
-    int choice;
-    string user_id=argv[1];
-    string password=argv[2];
-    char *position_str = argv[3];
-    long position = strtol(position_str, NULL, 10);// Position of the user block in file
+//     //first we will have to set the head to the user block 
+//     FILE *file = fopen("customers.txt", "r+");
+//     if (file == NULL){
+//         perror("Error opening file");
+//         return 1;
+//     }
+//     // int fd = fileno(file);
+//     // flock(fd, LOCK_EX);
+//     fseek(file, position, SEEK_SET);
+//     struct Customer custm;
+//     if (fread(&custm, sizeof(struct Customer), 1, file) != 1){
+//     	perror("Error reading user data");
+//     	return 1;
+// 	}
 
-    //first we will have to set the head to the user block 
-    FILE *file = fopen("customers.txt", "r+");
-    if (file == NULL){
-        perror("Error opening file");
-        return 1;
-    }
-    // int fd = fileno(file);
-    // flock(fd, LOCK_EX);
-    fseek(file, position, SEEK_SET);
-    struct Customer custm;
-    if (fread(&custm, sizeof(struct Customer), 1, file) != 1){
-    	perror("Error reading user data");
-    	return 1;
-	}
+//     while (1){
 
-    while (1){
+//         printf("\n1. View Account Balance\n2. Deposit Money\n3. Withdraw Money\n4. Transfer Funds\n5. APPLY FOR LOAN\n6. Change Password\n7. Adding FeedBack\n8. View Transaction History\n9. Logout\nChoose an option: ");
+//         scanf("%d", &choice);
 
-        printf("\n1. View Account Balance\n2. Deposit Money\n3. Withdraw Money\n4. Transfer Funds\n5. APPLY FOR LOAN\n6. Change Password\n7. Adding FeedBack\n8. View Transaction History\n9. Logout\nChoose an option: ");
-        scanf("%d", &choice);
+//         switch (choice){
+//             case 1:
+//                 view_account_balance(custm)
+//                 break;
+//             case 2:
+//                 deposit_money(position);
+//                 break;
+//             case 3:
+//                 withdraw_money(position);
+//                 break;
+//             case 4:
+//             	string reciever_id;
+//             	int amount;
+//             	printf("\nPlease enter the Receiver's ID: ");
+//             	scanf("%s",&receiver_id);
+//             	printf("\nPlease enter the amount to be Transferred: ");
+//             	scanf("%d",&amount);
+//                 transfer_funds(position,receiver_id,amount);
+//                 break;
+//             case 5:
+//                 apply_for_loan();
+//                 break;
+//             case 6:
+//                 change_password(position);
+//                 break;
+//             case 7:
+//                 add_feedback();
+//                 break;
+//             case 8:
+//                 view_transaction_history();
+//                 break;
+//             case 9:
+//                 printf("Logging out...\n");
+//                 // Here we have to make the customer offline
 
-        switch (choice){
-            case 1:
-                view_account_balance(custm)
-                break;
-            case 2:
-                deposit_money(position);
-                break;
-            case 3:
-                withdraw_money(position);
-                break;
-            case 4:
-            	string reciever_id;
-            	int amount;
-            	printf("\nPlease enter the Receiver's ID: ");
-            	scanf("%s",&receiver_id);
-            	printf("\nPlease enter the amount to be Transferred: ");
-            	scanf("%d",&amount);
-                transfer_funds(position,receiver_id,amount);
-                break;
-            case 5:
-                apply_for_loan();
-                break;
-            case 6:
-                change_password(position);
-                break;
-            case 7:
-                add_feedback();
-                break;
-            case 8:
-                view_transaction_history();
-                break;
-            case 9:
-                printf("Logging out...\n");
-                // Here we have to make the customer offline
-
-                exit(0);
-            default:
-                printf("Invalid choice. Try again.\n");
-        }
-    }
-    return 0;
-}
+//                 exit(0);
+//             default:
+//                 printf("Invalid choice. Try again.\n");
+//         }
+//     }
+//     return 0;
+// }
