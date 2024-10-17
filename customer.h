@@ -101,4 +101,51 @@ int deposit_money(char* user_id,int amount){
     return 0;
 }
 
+int withdraw_money(char* user_id,int amount){
+
+	FILE *file = fopen("customers.txt", "r+");
+    if (file == NULL) {
+        perror("Error opening file");
+        return 0;
+    }
+
+    int fd = fileno(file);
+    struct Customer who;
+    struct flock lock;
+    long position;
+
+    // Searching in the file
+        while (fread(&who, sizeof(struct Customer), 1, file) == 1) {
+            if (strcmp(who.userid, user_id) == 0) {
+                    position = ftell(file) - sizeof(struct Customer);
+                    lock.l_type = F_WRLCK;// F_WRLCK for exclusive lock
+                    lock.l_whence = SEEK_CUR;
+                    lock.l_start = 0;
+                    lock.l_len = -sizeof(struct Customer);
+                    lock.l_pid = getpid();
+                    fcntl(fd, F_SETLKW, &lock);// LOCKING the part where user block is present          
+                    if(who.balance<amount){
+                    	return -1;//Insufficient Balance
+                    }
+                    int balance=who.balance-amount;
+                    who.balance-=amount;
+
+                    fseek(file, position, SEEK_SET);
+                	fwrite(&who, sizeof(struct Customer), 1, file);
+                	fflush(file);
+                    lock.l_type = F_UNLCK; // Unlock
+                    if (fcntl(fd, F_SETLK, &lock) == -1) {
+                        perror("fcntl");
+                        return 1;
+                    }
+                    fclose(file);
+                    return balance;  // Success
+            }
+       }
+    fclose(file);
+
+    return 0;
+}
+
+
 #endif

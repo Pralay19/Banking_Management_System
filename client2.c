@@ -143,7 +143,16 @@ void customer_program(int sock){
 
         }
         else if(choice==3){
-            
+            //Withdraw Money
+            int amount;
+            printf("\nEnter amount: ");
+            scanf("%d", &amount);
+            snprintf(buffer, sizeof(buffer), "%d", amount);
+            send(sock, buffer, strlen(buffer), 0);
+            memset(buffer, 0, sizeof(buffer));
+            recv(sock,buffer,sizeof(buffer),0);
+            printf("\n%s",buffer);
+            memset(buffer, 0, sizeof(buffer));
         }
         else if(choice==4){
             

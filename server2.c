@@ -27,8 +27,6 @@
 #define PORT 8080
 
 
-int number_of_custm=0;
-int number_of_emp=0;
 
 
 int authentication(int role,const char *userid, const char *password){
@@ -42,13 +40,19 @@ int authentication(int role,const char *userid, const char *password){
             perror("Error opening role file");
             return 0;
         }
+        printf("\nFile Opened");
         struct Customer who;
+        fseek(file, 0, SEEK_SET);
         while (fread(&who, sizeof(struct Customer), 1, file) == 1) {
+            printf("\nChecking %s",who.userid);
 	        if (strcmp(who.userid, userid) == 0 && strcmp(who.password, password) == 0) {
-	            fclose(file);
+	            
+                fclose(file);
 	            return 1; // Authentication successful
 	        }
     	}
+        fclose(file);
+        printf("\nUser Not Found");
 	}
 	else if(role==2){
 		//EMPLOYEE
@@ -60,12 +64,15 @@ int authentication(int role,const char *userid, const char *password){
             return 0;
         }
         struct Employee who;
+        fseek(file, 0, SEEK_SET);
         while (fread(&who, sizeof(struct Employee), 1, file) == 1) {
 	        if (strcmp(who.userid, userid) == 0 && strcmp(who.password, password) == 0) {
-	            fclose(file);
+	            
+                fclose(file);
 	            return 1; // Authentication successful
 	        }
     	}
+        fclose(file);
 	}
 	else if(role==3){
 		//MANAGER
@@ -76,12 +83,15 @@ int authentication(int role,const char *userid, const char *password){
             return 0;
         }
         struct Manager who;
+        fseek(file, 0, SEEK_SET);
         while (fread(&who, sizeof(struct Manager), 1, file) == 1) {
 	        if (strcmp(who.userid, userid) == 0 && strcmp(who.password, password) == 0) {
-	            fclose(file);
+	            
+                fclose(file);
 	            return 1; // Authentication successful
 	        }
     	}
+        fclose(file);
 	}
 	else if(role==4){
 		//ADMIN
@@ -107,7 +117,7 @@ void handle_client(int client_sock) {
             printf("Client disconnected\n");
         } 
         else {
-            perror("recv");
+            //perror("recv");
         }
     	   
 
@@ -134,7 +144,7 @@ void handle_client(int client_sock) {
     		memset(buffer, 0, sizeof(buffer));
     		continue;
     	}
-
+        memset(buffer, 0, sizeof(buffer));
     	snprintf(buffer,sizeof(buffer),"Login Successful !\nWelcome %s",userid);
     	send(client_sock,buffer,sizeof(buffer),0);
     	memset(buffer, 0, sizeof(buffer));
@@ -167,6 +177,21 @@ void handle_client(int client_sock) {
                     memset(buffer, 0, sizeof(buffer));
                 }
                 else if(choice==3){
+                    //Withdraw Money
+                    int amount;
+                    memset(buffer, 0, sizeof(buffer));
+                    recv(client_sock, buffer, sizeof(buffer), 0);
+                    sscanf(buffer, "%d",&amount);
+                    int result=withdraw_money(userid,amount);
+                    if(result>0){
+                        char*msg1="\nAvailable Balance: $";
+                        snprintf(buffer,sizeof(buffer),"%s%d",msg1,result);
+                        send(client_sock,buffer,sizeof(buffer),0);
+                    }
+                    else{
+                        char*msg1="\nInsufficient Balance.";
+                        send(client_sock,msg1,sizeof(msg1),0);
+                    }
                     
                 }
                 else if(choice==4){
@@ -215,8 +240,8 @@ void handle_client(int client_sock) {
                     memset(buffer, 0, sizeof(buffer));
                     recv(client_sock, buffer, sizeof(buffer), 0);
                     sscanf(buffer, "%s %s", new_customer_id, new_customer_password);
-                    add_new_customer(new_customer_id, new_customer_password,number_of_emp);
-                    number_of_custm+=1;
+                    add_new_customer(new_customer_id, new_customer_password);
+
                     strcpy(buffer,"New Customer Added.");
                     send(client_sock, buffer, sizeof(buffer), 0);
                     memset(buffer, 0, sizeof(buffer));
@@ -249,8 +274,8 @@ void handle_client(int client_sock) {
                     memset(buffer, 0, sizeof(buffer));
                     recv(client_sock, buffer, sizeof(buffer), 0);
                     sscanf(buffer, "%s %s", new_employee_id, new_employee_password);
-                    add_new_employee(new_employee_id, new_employee_password,number_of_emp);
-                    number_of_emp+=1;
+                    add_new_employee(new_employee_id, new_employee_password);
+
                     memset(buffer, 0, sizeof(buffer));
                     strcpy(buffer,"New Employee Added.");
                     send(client_sock, buffer, sizeof(buffer), 0);

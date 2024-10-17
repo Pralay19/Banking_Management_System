@@ -21,27 +21,27 @@
 
 
 // Add a new employee to the system
-void add_new_employee(const char *employee_id, const char *password,int number_of_emp) {
+void add_new_employee(const char *employee_id, const char *password) {
     
     struct Employee new_employee;
     strcpy(new_employee.userid, employee_id);
     strcpy(new_employee.password, password);
 
-    FILE *file = fopen("employees.txt", "a+");
+    FILE *file = fopen("employees.txt", "r+");
     if (file == NULL) {
         perror("Error opening file");
         return;
     }
-    int offset = sizeof(struct Employee) * number_of_emp;
+
     struct flock lock;
     int fd = fileno(file);
     lock.l_type = F_WRLCK;
-    lock.l_whence = SEEK_SET;
-    lock.l_start = offset;
+    lock.l_whence = SEEK_END;
+    lock.l_start = 0;
     lock.l_len = sizeof(struct Employee);  
     lock.l_pid = getpid();
     fcntl(fd, F_SETLKW, &lock);
-    fseek(file, offset, SEEK_SET);
+    fseek(file,0,SEEK_END);
     if (fwrite(&new_employee, sizeof(struct Employee), 1, file) != 1) {
     printf("\nError writing new employee to file\n");
     }
