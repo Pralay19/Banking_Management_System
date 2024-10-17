@@ -22,6 +22,7 @@
 #include "allStructures.h"
 #include "employee.h"
 #include "admin.h"
+#include "customer.h"
 
 #define PORT 8080
 
@@ -51,10 +52,11 @@ int authentication(int role,const char *userid, const char *password){
 	}
 	else if(role==2){
 		//EMPLOYEE
+        printf("\nINSIDE EMP %s\n",userid);
 		strcpy(filename, "employees.txt");
 		file = fopen(filename, "r");
         if (file == NULL) {
-            perror("Error opening role file");
+            printf("\nError opening role file\n");
             return 0;
         }
         struct Employee who;
@@ -147,21 +149,53 @@ void handle_client(int client_sock) {
 
                 if(choice==1){
                     // //View balance
-                    // int amount=0;
-                    // amount=view_account_balance(userid);
-                    // snprintf(buffer,sizeof(buffer),"Available Balance: $%d",amount);
-                    // send(client_sock,buffer,sizeof(buffer),0);
+                    int amount=0;
+                    amount=view_account_balance(userid);
+                    snprintf(buffer,sizeof(buffer),"Available Balance: $%d",amount);
+                    send(client_sock,buffer,sizeof(buffer),0);
+                    memset(buffer, 0, sizeof(buffer));
                 }
                 else if(choice==2){
-
+                    //Deposit Money
+                    int amount;
+                    recv(client_sock, buffer, sizeof(buffer), 0);
+                    sscanf(buffer, "%d", &amount);
+                    int result=deposit_money(userid,amount);
+                    char*msg1="\nAvailable Balance: $";
+                    snprintf(buffer,sizeof(buffer),"%s%d",msg1,result);
+                    send(client_sock,buffer,sizeof(buffer),0);
+                    memset(buffer, 0, sizeof(buffer));
                 }
                 else if(choice==3){
                     
                 }
                 else if(choice==4){
                     
-                }else if(choice==2){
+                }
+                else if(choice==5){
                     
+                }
+                else if(choice==6){
+                    
+                }
+                else if(choice==7){
+                    
+                }
+                else if(choice==8){
+                    
+                }
+                else if(choice==9){
+                    // Logout
+                    //remove_session(userid);
+                    
+                    char *msg = "Logged Out";
+                    send(client_sock, msg, strlen(msg), 0);
+                    break;
+
+                }
+                else{
+                    //Invalid Choice
+
                 }
 
 

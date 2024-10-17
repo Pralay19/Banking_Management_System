@@ -23,7 +23,7 @@ void add_new_customer(const char *customer_id, const char *password,int number_o
     struct Customer new_customer;
     strcpy(new_customer.userid, customer_id);
     strcpy(new_customer.password, password);
-
+    
     FILE *file = fopen("customers.txt", "a+");
     if (file == NULL) {
         perror("Error opening file");
@@ -39,6 +39,7 @@ void add_new_customer(const char *customer_id, const char *password,int number_o
     lock.l_pid = getpid();
     fcntl(fd, F_SETLKW, &lock);
     fseek(file, offset, SEEK_SET);
+
     if (fwrite(&new_customer, sizeof(struct Customer), 1, file) != 1) {
     printf("\nError writing new Customer to file\n");
     }
