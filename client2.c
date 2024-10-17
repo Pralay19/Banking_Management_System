@@ -20,6 +20,95 @@
 
 #define PORT 8080
 
+void admin_program(int sock){
+	char buffer[1024], employee_id[100], password[10];
+
+	while(1){
+		int choice;
+		printf("\nAdmin Menu:\n");
+        printf("1. Add New Employee\n2. Logout\nChoose an option: ");
+        scanf("%d",&choice);
+        memset(buffer, 0, sizeof(buffer));
+        snprintf(buffer, sizeof(buffer), "%d", choice);
+        send(sock, buffer, strlen(buffer), 0);
+        memset(buffer, 0, sizeof(buffer));
+
+        if (choice == 1) {
+            // Add New Employee
+            printf("Enter new employee UserID: ");
+            scanf("%s", employee_id);
+            printf("Enter password for the new employee: ");
+            scanf("%s", password);
+            memset(buffer, 0, sizeof(buffer));
+            snprintf(buffer, sizeof(buffer), "%s %s", employee_id, password);
+            send(sock, buffer, strlen(buffer), 0);
+            memset(buffer, 0, sizeof(buffer));
+            recv(sock, buffer, sizeof(buffer), 0);
+            printf("\n%s", buffer);
+            memset(buffer, 0, sizeof(buffer));
+            
+        } 
+        else if (choice == 2) {
+            // Logout
+            memset(buffer, 0, sizeof(buffer));
+            snprintf(buffer, sizeof(buffer), "%d", choice);
+            send(sock, buffer, strlen(buffer), 0);
+            printf("Logging out...\n");
+            memset(buffer, 0, sizeof(buffer));
+            // remove it from session
+
+
+            recv(sock,buffer,sizeof(buffer),0);
+            printf("\n%s",buffer);
+            memset(buffer, 0, sizeof(buffer));
+            break;
+        } 
+        else {
+            printf("Invalid choice. Please try again.\n");
+        }
+
+	}
+}
+
+void employee_program(int sock){
+	char buffer[1024];
+
+	while(1){
+		int choice;
+		printf("\nEmployee Menu:\n");
+        printf("1. Add New Customer\n2. Modify Customer Details\n3. Process Loan Application\n4. View Assigned Loan Applications\n5. Change Password\n6. Logout\nChoose an option: ");
+        scanf("%d",&choice);
+
+        snprintf(buffer, sizeof(buffer), "%d", choice);
+        send(sock, buffer, strlen(buffer), 0);
+
+        if (choice == 1) {
+            // Add New Customer
+            char userid[100],password[10];
+            printf("Enter new customer UserID: ");
+            scanf("%s", userid);
+            printf("Enter password for the new customer: ");
+            scanf("%s", password);
+            snprintf(buffer, sizeof(buffer), "%s %s", userid, password);
+            send(sock, buffer, strlen(buffer), 0);
+            memset(buffer, 0, sizeof(buffer));
+            recv(sock, buffer, sizeof(buffer), 0);
+            printf("\n%s", buffer);
+            memset(buffer,0,sizeof(buffer));
+        }
+        else if(choice==6){
+        	// Logout
+            printf("Logging out...\n");
+            memset(buffer, 0, sizeof(buffer));
+
+            recv(sock,buffer,sizeof(buffer),0);
+            printf("\n%s",buffer);
+            memset(buffer, 0, sizeof(buffer));
+            break;
+        }
+	}
+
+}
 
 int main() {
 	int sock=0;
@@ -48,13 +137,15 @@ int main() {
 
 
     while(1){
-
+    	memset(buffer, 0, sizeof(buffer));
     	printf("\nEnter role \n1.Customer\n2. Employee\n3. Manager\n4. Administrator\n5. Exit \n\n");
     	scanf("%d",&role_choice);
     	if(role_choice==5){
     		// The client program is closed
-
-    		send(sock, );
+    		strcpy(userid,"a");
+    		strcpy(password,"b");
+    		snprintf(buffer, sizeof(buffer), "%d %s %s", role_choice,userid,password);
+    		send(sock, buffer,sizeof(buffer),0);
     		close(sock);
     		exit(0);
     	}
@@ -63,8 +154,10 @@ int main() {
         scanf("%s", userid);
         printf("\nEnter Password: ");
         scanf("%s", password);
-
+        
+        memset(buffer, 0, sizeof(buffer));
         snprintf(buffer, sizeof(buffer), "%d %s %s", role_choice, userid, password);
+        printf("%s\n",buffer );
         send(sock, buffer, strlen(buffer), 0);
         memset(buffer, 0, sizeof(buffer));
         recv(sock,buffer,sizeof(buffer),0);
@@ -75,13 +168,13 @@ int main() {
         		//customer_program(sock);
         	}
         	else if(role_choice==2) {
-        		//employee_program(sock);
+        		employee_program(sock);
         	}
         	else if(role_choice==3) {
         		// manager_program(sock);
         	}
         	else if(role_choice==4) {
-        		//admin_program(sock);
+        		admin_program(sock);
         	}
         	else {
         		// Invalid choice
