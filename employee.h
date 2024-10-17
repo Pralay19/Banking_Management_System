@@ -23,7 +23,7 @@ void add_new_customer(const char *customer_id, const char *password) {
     struct Customer new_customer;
     strcpy(new_customer.userid, customer_id);
     strcpy(new_customer.password, password);
-
+    new_customer.balance=0;
     FILE *file = fopen("customers.txt", "r+");
     if (file == NULL) {
         perror("Error opening file");

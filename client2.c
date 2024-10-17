@@ -126,6 +126,7 @@ void customer_program(int sock){
         	memset(buffer, 0, sizeof(buffer));
         	recv(sock,buffer,sizeof(buffer),0);
             printf("\n%s",buffer);
+            memset(buffer, 0, sizeof(buffer));
 
         }
         else if(choice==2){
@@ -155,10 +156,25 @@ void customer_program(int sock){
             memset(buffer, 0, sizeof(buffer));
         }
         else if(choice==4){
+            //Transfer Funds
+            char receiver_id[100];
+            int amount;
+            printf("\nEnter receiver ID: ");
+            scanf("%s", receiver_id);
+            printf("\nEnter amount to transfer: ");
+            scanf("%d", &amount);
             
+            memset(buffer, 0, sizeof(buffer));
+            snprintf(buffer, sizeof(buffer), "%s %d", receiver_id, amount);
+            send(sock, buffer, strlen(buffer), 0);
+            memset(buffer, 0, sizeof(buffer));
+
+            recv(sock,buffer,strlen(buffer),0);
+           	printf("\n%s",buffer);
+           	memset(buffer, 0, sizeof(buffer));
         }
         else if(choice==5){
-            
+            //
         }
         else if(choice==6){
             

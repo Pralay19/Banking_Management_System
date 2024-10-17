@@ -44,7 +44,7 @@ int authentication(int role,const char *userid, const char *password){
         struct Customer who;
         fseek(file, 0, SEEK_SET);
         while (fread(&who, sizeof(struct Customer), 1, file) == 1) {
-            printf("\nChecking %s",who.userid);
+            printf("\nChecking %s %s",who.userid,who.password);
 	        if (strcmp(who.userid, userid) == 0 && strcmp(who.password, password) == 0) {
 	            
                 fclose(file);
@@ -192,10 +192,39 @@ void handle_client(int client_sock) {
                         char*msg1="\nInsufficient Balance.";
                         send(client_sock,msg1,sizeof(msg1),0);
                     }
+                    memset(buffer, 0, sizeof(buffer));
                     
                 }
                 else if(choice==4){
-                    
+                    //Transfer Funds
+                    char receiver_id[100];
+                    int amount;
+                    memset(buffer, 0, sizeof(buffer));
+                    recv(client_sock, buffer, sizeof(buffer), 0);
+                    sscanf(buffer, "%s %d", receiver_id, &amount);
+                    memset(buffer, 0, sizeof(buffer));
+                    int result=transfer_funds(userid, receiver_id, amount);
+                    if(result!=0){
+                        if(result>0){
+                            memset(buffer, 0, sizeof(buffer));
+                            char * msg1="\nTransfer successful. Available Balance: $";
+                            snprintf(buffer,sizeof(buffer),"%s%d",msg1,result);
+                            //printf("");
+                            send(client_sock,buffer,sizeof(buffer),0);
+                            memset(buffer, 0, sizeof(buffer));
+                        }
+                        else{
+                            memset(buffer, 0, sizeof(buffer));
+                            snprintf(buffer,sizeof(buffer),"Insuffecient Balance.");
+                            send(client_sock,buffer,sizeof(buffer),0);
+                            memset(buffer, 0, sizeof(buffer));
+                        }
+                    }
+                    else{
+                        char *msg1="\nNo such Account found. Please check the User Id of the receiver and try again later.";
+                        send(client_sock,msg1,sizeof(msg1),0);
+                    }
+                    memset(buffer, 0, sizeof(buffer));
                 }
                 else if(choice==5){
                     
