@@ -207,9 +207,8 @@ void handle_client(int client_sock) {
                     if(result!=0){
                         if(result>0){
                             memset(buffer, 0, sizeof(buffer));
-                            char * msg1="\nTransfer successful. Available Balance: $";
-                            snprintf(buffer,sizeof(buffer),"%s%d",msg1,result);
-                            //printf("");
+                            snprintf(buffer,sizeof(buffer),"\nTransfer successful. Available Balance: $%d",result);
+                            //printf("\n%s\n",buffer);
                             send(client_sock,buffer,sizeof(buffer),0);
                             memset(buffer, 0, sizeof(buffer));
                         }
@@ -221,19 +220,44 @@ void handle_client(int client_sock) {
                         }
                     }
                     else{
-                        char *msg1="\nNo such Account found. Please check the User Id of the receiver and try again later.";
-                        send(client_sock,msg1,sizeof(msg1),0);
+                        
+                        snprintf(buffer,sizeof(buffer),"\nNo such Account found. Please check the User Id of the receiver and try again later.");
+                        send(client_sock,buffer,sizeof(buffer),0);
                     }
                     memset(buffer, 0, sizeof(buffer));
                 }
                 else if(choice==5){
-                    
+                    //Apply for a loan
                 }
                 else if(choice==6){
-                    
+                    //Change password
+                    char new_password[10];
+                    memset(buffer, 0, sizeof(buffer));
+                    recv(client_sock, buffer, sizeof(buffer), 0);
+                    sscanf(buffer, "%s", new_password);
+                    int result=change_password(userid, new_password);
+                    if(result){
+                        memset(buffer, 0, sizeof(buffer));
+                        snprintf(buffer,sizeof(buffer),"\nPassword changed successfully.");
+                        send(client_sock,buffer,sizeof(buffer),0);
+                    }
+                    else{
+                        memset(buffer, 0, sizeof(buffer));
+                        snprintf(buffer,sizeof(buffer),"\nError in database");
+                        send(client_sock,buffer,sizeof(buffer),0);
+                    }
+                    memset(buffer, 0, sizeof(buffer));
                 }
                 else if(choice==7){
-                    
+                    //Add a feedback
+                    char feedback[100];
+                    recv(client_sock, buffer, sizeof(buffer), 0);
+                    sscanf(feedback, "%s", buffer);
+                    memset(buffer, 0, sizeof(buffer));
+                    add_feedback(userid,feedback);
+                    snprintf(buffer,sizeof(buffer),"\nAdded your feedback.\n");
+                    send(client_sock,buffer,sizeof(buffer));
+                    memset(buffer, 0, sizeof(buffer));
                 }
                 else if(choice==8){
                     

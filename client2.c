@@ -117,7 +117,7 @@ void customer_program(int sock){
 		int choice;
 		printf("\nCustomer Menu:\n1. View Balance\n2. Deposit Money\n3. Withdraw Money\n4. Transfer Funds\n5. Apply for a Loan\n6. Change Password\n7. Adding Feedback\n8. View Transaction History\n9. Logout\nChoose an option: ");
         scanf("%d", &choice);
-
+        memset(buffer, 0, sizeof(buffer));
         snprintf(buffer, sizeof(buffer), "%d", choice);
         send(sock, buffer, strlen(buffer), 0);
 
@@ -163,24 +163,50 @@ void customer_program(int sock){
             scanf("%s", receiver_id);
             printf("\nEnter amount to transfer: ");
             scanf("%d", &amount);
-            
+
             memset(buffer, 0, sizeof(buffer));
             snprintf(buffer, sizeof(buffer), "%s %d", receiver_id, amount);
             send(sock, buffer, strlen(buffer), 0);
             memset(buffer, 0, sizeof(buffer));
 
-            recv(sock,buffer,strlen(buffer),0);
-           	printf("\n%s",buffer);
-           	memset(buffer, 0, sizeof(buffer));
+            int bytes_received = recv(sock, buffer, sizeof(buffer), 0);
+			if (bytes_received < 0) {
+			    perror("recv failed");
+			} else {
+			    printf("%s\n", buffer);
+			}
+			memset(buffer, 0, sizeof(buffer));
         }
         else if(choice==5){
-            //
+            //Apply for a loan
+
         }
         else if(choice==6){
-            
+            //Change Password
+            char password[10];
+            printf("\nEnter new password(10 characters): ");
+            scanf("%s", password);
+            memset(buffer, 0, sizeof(buffer));
+            snprintf(buffer, sizeof(buffer), "%s", password);
+            send(sock, buffer, strlen(buffer), 0);
+            memset(buffer, 0, sizeof(buffer));
+            recv(sock,buffer,sizeof(buffer),0);
+            printf("%s",buffer);
+            memset(buffer, 0, sizeof(buffer));
         }
         else if(choice==7){
-            
+            // Adding Feedback
+        	char feedback[300];
+            printf("\nEnter Feedback(300 characters): ");
+            scanf("%s", feedback);
+            memset(buffer, 0, sizeof(buffer));
+            snprintf(buffer, sizeof(buffer), "%s", feedback);
+            send(sock, buffer, strlen(buffer), 0);
+            memset(buffer, 0, sizeof(buffer));
+            recv(sock,buffer,sizeof(buffer),0);
+            printf("%s",buffer);
+            memset(buffer, 0, sizeof(buffer));
+
         }
         else if(choice==8){
             

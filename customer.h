@@ -145,13 +145,126 @@ int withdraw_money(char* user_id,int amount){
     return 0;
 }
 
+int transfer_funds(char* user_id, char* receiver_id, int amount) {
 
-int transfer_funds(char* user_id,char* receiver_id,int amount){
+    struct Customer sender, receiver;
+    struct flock lock;
+    FILE *file = fopen("customers.txt", "r+");
+    if (file == NULL) {
+        perror("Error opening file");
+        return 0;
+    }
+    int fd = fileno(file);
 
-	struct Customer recvr;
-	struct Customer sender;
-	struct flock locks;
-	struct flock lockr;
+    long sender_position = -1, receiver_position = -1;
+    int sender_found = 0, receiver_found = 0;
+
+    // Find sender in the file
+    fseek(file, 0, SEEK_SET); 
+    while (fread(&sender, sizeof(struct Customer), 1, file) == 1) {
+        if (strcmp(sender.userid, user_id) == 0) {
+            sender_position = ftell(file) - sizeof(struct Customer);
+            sender_found = 1;
+            break;
+        }
+    }
+
+    if (!sender_found) {
+        fclose(file);
+        printf("Sender not found\n");
+        return 0;
+    }
+
+    // Find receiver in the file
+    fseek(file, 0, SEEK_SET); 
+    while (fread(&receiver, sizeof(struct Customer), 1, file) == 1) {
+        if (strcmp(receiver.userid, receiver_id) == 0) {
+            receiver_position = ftell(file) - sizeof(struct Customer);
+            receiver_found = 1;
+            break;
+        }
+    }
+
+    if (!receiver_found) {
+        fclose(file);
+        printf("Receiver not found\n");
+        return 0;
+    }
+
+    //checking if suffiecient balance
+    if (sender.balance < amount) {
+        fclose(file);
+        printf("Insufficient funds\n");
+        return -1;
+    }
+
+    // Lock the sender
+    lock.l_type = F_WRLCK;
+    lock.l_whence = SEEK_SET;
+    lock.l_start = sender_position;
+    lock.l_len = sizeof(struct Customer);
+    lock.l_pid = getpid();
+    if (fcntl(fd, F_SETLKW, &lock) == -1) {
+        perror("Error locking sender");
+        fclose(file);
+        return 0;
+    }
+
+    // Lock the receiver
+    lock.l_start = receiver_position;
+    if (fcntl(fd, F_SETLKW, &lock) == -1) {
+        perror("Error locking receiver");
+        lock.l_start = sender_position;  
+        lock.l_type = F_UNLCK;
+        fcntl(fd, F_SETLK, &lock);
+        fclose(file);
+        return 0;
+    }
+
+    
+    sender.balance -= amount;
+    receiver.balance += amount;
+
+    //Write updated sender back to the file
+    fseek(file, sender_position, SEEK_SET);
+    if (fwrite(&sender, sizeof(struct Customer), 1, file) != 1) {
+        perror("Error updating sender");
+        lock.l_start = sender_position;  
+        lock.l_type = F_UNLCK;
+        fcntl(fd, F_SETLK, &lock);
+        lock.l_start = receiver_position;  
+        fcntl(fd, F_SETLK, &lock);
+        fclose(file);
+        return 0;
+    }
+
+    //Write updated receiver back to the file
+    fseek(file, receiver_position, SEEK_SET);
+    if (fwrite(&receiver, sizeof(struct Customer), 1, file) != 1) {
+        perror("Error updating receiver");
+        lock.l_start = sender_position;  
+        lock.l_type = F_UNLCK;
+        fcntl(fd, F_SETLK, &lock);
+        lock.l_start = receiver_position;  
+        fcntl(fd, F_SETLK, &lock);
+        fclose(file);
+        return 0;
+    }
+
+    //Unlock both sender and receiver
+    lock.l_type = F_UNLCK;
+    lock.l_start = sender_position;
+    fcntl(fd, F_SETLK, &lock);
+    lock.l_start = receiver_position;
+    fcntl(fd, F_SETLK, &lock);
+
+    
+    fclose(file);
+
+    return sender.balance;  
+}
+
+int change_password(char*user_id,char*password){
 
 	FILE *file = fopen("customers.txt", "r+");
     if (file == NULL) {
@@ -159,62 +272,41 @@ int transfer_funds(char* user_id,char* receiver_id,int amount){
         return 0;
     }
     int fd = fileno(file);
+    struct Customer who;
+    struct flock lock;
 
-    long position;
-    // Searching in the file
-    fseek(file,0,SEEK_SET);
-    while (fread(&sender, sizeof(struct Customer), 1, file) == 1) {
-        if (strcmp(sender.userid, user_id) == 0) {
-        		position=ftell(file)-sizeof(struct Customer);
-                locks.l_type = F_WRLCK;
-                locks.l_whence = SEEK_CUR;
-                locks.l_start = sizeof(struct Customer)*(-1);
-                locks.l_len = sizeof(struct Customer);
-                locks.l_pid = getpid();
-                
-        }
-   }
-	fseek(file,0,SEEK_SET);
-	// searching receiver block in the file
-	while (fread(&recvr, sizeof(struct Customer), 1, file) == 1) {
-        if (strcmp(recvr.userid, receiver_id) == 0) {	          
-    		lockr.l_type = F_WRLCK;
-			lockr.l_whence = SEEK_CUR;
-			lockr.l_start = sizeof(struct Customer)*(-1);
-			lockr.l_len = sizeof(struct Customer);
-			lockr.l_pid = getpid();
-			fcntl(fd, F_SETLKW, &lockr); 
-			fcntl(fd, F_SETLKW, &locks);
-            // Checking if sender has suffecient balance or not
-            if(amount>sender.balance){
-                return -1; // Fail
-            }
-			recvr.balance+=amount;
-			sender.balance-=amount;
-            // Updating the changes of receiver to file
-            fseek(file, (-1)*sizeof(struct Customer), SEEK_CUR);
-            fwrite(&recvr, sizeof(struct Customer), 1, file);// Writing the changes to file
-            lockr.l_type = F_UNLCK; // Unlock the receiver part
-    		if (fcntl(fd, F_SETLK, &lockr) == -1) {
-        		perror("fcntl");
-        		return 0;
-    		}
-
-            // Updating changes of sender to file
-            fseek(file, position, SEEK_SET);
-            fwrite(&sender, sizeof(struct Customer), 1, file);// Writing the changes to file
-            fflush(file);// Ensuring data is written to disk
-            locks.l_type = F_UNLCK; // Unlock the sender part
-    		if (fcntl(fd, F_SETLK, &locks) == -1) {
-        		perror("fcntl");
-        		return 0;
-    		}
-            fclose(file);
-            return sender.balance; // Success
+    long position=-1;
+    // Find sender in the file
+    fseek(file, 0, SEEK_SET); 
+    while (fread(&who, sizeof(struct Customer), 1, file) == 1) {
+        if (strcmp(who.userid, user_id) == 0) {
+            position = ftell(file) - sizeof(struct Customer);
+            break;
         }
     }
+
+    lock.l_type = F_WRLCK;
+    lock.l_whence = SEEK_SET;
+    lock.l_start = position;
+    lock.l_len = sizeof(struct Customer);
+    lock.l_pid = getpid();
+    if (fcntl(fd, F_SETLKW, &lock) == -1) {
+        perror("Error locking sender");
+        fclose(file);
+        return 0;
+    }
+    strcpy(who.password, password);
+
+    fseek(file, position, SEEK_SET);
+    fwrite(&who, sizeof(struct Customer), 1, file);
+        
+    lock.l_start = position;  
+    lock.l_type = F_UNLCK;
+    fcntl(fd, F_SETLK, &lock);
+
     fclose(file);
-    return 0; // Fail
+    return 1;
+
 }
 
 #endif
