@@ -21,12 +21,12 @@
 #define PORT 8080
 
 void admin_program(int sock){
-	char buffer[1024], employee_id[100], password[10];
+	char buffer[1024], employee_id[100], password[10],manager_id[100];
 
 	while(1){
 		int choice;
 		printf("\nAdmin Menu:\n");
-        printf("1. Add New Employee\n2. Logout\nChoose an option: ");
+        printf("1. Add New Employee\n2. Logout\n3. Add new Manager\nChoose an option: ");
         scanf("%d",&choice);
         memset(buffer, 0, sizeof(buffer));
         snprintf(buffer, sizeof(buffer), "%d", choice);
@@ -62,7 +62,22 @@ void admin_program(int sock){
             printf("\n%s",buffer);
             memset(buffer, 0, sizeof(buffer));
             return;
-        } 
+        }
+        else if(choice==3){
+        	//Add New manager
+        	printf("Enter new Manager UserID: ");
+            scanf("%s", employee_id);
+            printf("Enter password for the new Manager: ");
+            scanf("%s", password);
+            memset(buffer, 0, sizeof(buffer));
+            snprintf(buffer, sizeof(buffer), "%s %s", employee_id, password);
+            send(sock, buffer, strlen(buffer), 0);
+            memset(buffer, 0, sizeof(buffer));
+            recv(sock, buffer, sizeof(buffer), 0);
+            printf("\n%s", buffer);
+            memset(buffer, 0, sizeof(buffer));
+
+        }
         else {
             printf("Invalid choice. Please try again.\n");
         }
@@ -95,6 +110,37 @@ void employee_program(int sock){
             recv(sock, buffer, sizeof(buffer), 0);
             printf("\n%s", buffer);
             memset(buffer,0,sizeof(buffer));
+        }
+        else if(){
+
+        }
+        else if(choice==3){
+
+        }
+        else if(choice==4){
+        	memset(buffer, 0, sizeof(buffer));
+        	char temp[1500];
+		    
+		    int result;
+		    memset(buffer, 0, sizeof(buffer));
+		    recv(sock,buffer,sizeof(buffer),0);
+		    sscanf(buffer, "%d", &result);
+		    memset(buffer, 0, sizeof(buffer));
+		    if(result){
+			    int bytes_received = recv(sock, temp, sizeof(temp), 0);
+			    if (bytes_received <= 0) {
+			        printf("Error receiving transactions or no transactions available.\n");
+			        
+			    }
+			    printf("%s",temp);
+			    memset(buffer, 0, sizeof(buffer));
+			}
+			else{
+				recv(sock,buffer,sizeof(buffer),0);
+				printf("%s",buffer);
+
+			}
+		    memset(buffer, 0, sizeof(buffer));
         }
         else if(choice==6){
         	// Logout
@@ -179,7 +225,15 @@ void customer_program(int sock){
         }
         else if(choice==5){
             //Apply for a loan
-
+        	int amount;
+        	printf("\nEnter the Loan Amount: $");
+        	scanf("%d",&amount);
+        	snprintf(buffer, sizeof(buffer), "%d", amount);
+            send(sock, buffer, strlen(buffer), 0);
+            memset(buffer, 0, sizeof(buffer));
+            recv(sock,buffer,sizeof(buffer),0);
+            printf("\n%s",buffer);
+            memset(buffer, 0, sizeof(buffer));
         }
         else if(choice==6){
             //Change Password
@@ -198,7 +252,8 @@ void customer_program(int sock){
             // Adding Feedback
         	char feedback[300];
             printf("\nEnter Feedback(300 characters): ");
-            scanf("%s", feedback);
+            fgets(feedback, sizeof(feedback), stdin);
+            feedback[strcspn(feedback, "\n")] = '\0';
             memset(buffer, 0, sizeof(buffer));
             snprintf(buffer, sizeof(buffer), "%s", feedback);
             send(sock, buffer, strlen(buffer), 0);
@@ -209,7 +264,39 @@ void customer_program(int sock){
 
         }
         else if(choice==8){
-            
+            //View Transactions
+            memset(buffer, 0, sizeof(buffer));
+        	struct Transaction transArray[100];
+		    memset(transArray, 0, sizeof(transArray));
+
+		    // Receive the transaction array from the server
+		    int result;
+		    memset(buffer, 0, sizeof(buffer));
+		    recv(sock,buffer,sizeof(buffer),0);
+		    sscanf(buffer, "%d", &result);
+		    memset(buffer, 0, sizeof(buffer));
+		    if(result){
+			    int bytes_received = recv(sock, transArray, sizeof(transArray), 0);
+			    if (bytes_received <= 0) {
+			        printf("Error receiving transactions or no transactions available.\n");
+			        
+			    }
+
+			    printf("\nYour Transactions:\n");
+			    for (int i = 0; i < 100; i++) {
+			        if (transArray[i].transac_id != 0) {
+			            printf("*Transaction ID: %d| Type: %s| Receiver ID: %s| Debit/Credit: %s| Amount: %d| Balance After: %d\n",
+			                   transArray[i].transac_id, transArray[i].transaction_type, transArray[i].receiver_id,
+			                   transArray[i].debitCredit, transArray[i].amount, transArray[i].balance_after);
+			        }
+			    }
+			}
+			else{
+				recv(sock,buffer,sizeof(buffer),0);
+				printf("%s",buffer);
+
+			}
+		    memset(buffer, 0, sizeof(buffer));
         }
         else if(choice==9){
             // Logout
@@ -224,7 +311,7 @@ void customer_program(int sock){
         }
         else{
             //Invalid Choice
-
+            printf("\nInvalid Choice\n");
         }
 
 	}
@@ -279,7 +366,7 @@ int main() {
 
         memset(buffer, 0, sizeof(buffer));
         snprintf(buffer, sizeof(buffer), "%d %s %s", role_choice, userid, password);
-        printf("%s\n",buffer );
+        
         send(sock, buffer, strlen(buffer), 0);
         memset(buffer, 0, sizeof(buffer));
         recv(sock,buffer,sizeof(buffer),0);

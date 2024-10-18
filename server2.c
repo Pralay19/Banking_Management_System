@@ -27,6 +27,54 @@
 #define PORT 8080
 
 
+struct Session {
+    char userid[100];
+    int sessionid;
+};
+
+struct Session activeSessions[100];
+int sessionCount = 0;
+
+pthread_mutex_t session_lock = PTHREAD_MUTEX_INITIALIZER;
+
+bool isOnline(const char *userid) {
+    pthread_mutex_lock(&session_lock);
+    for (int i = 0; i < sessionCount; i++) {
+        if (strcmp(activeSessions[i].userid, userid) == 0) {
+            pthread_mutex_unlock(&session_lock);
+            return true;
+        }
+    }
+    pthread_mutex_unlock(&session_lock);
+    return false;
+}
+
+int add_session(const char *userid) {
+    pthread_mutex_lock(&session_lock);
+    int sessionid = rand();
+    strcpy(activeSessions[sessionCount].userid, userid);
+    activeSessions[sessionCount].sessionid = sessionid;
+    sessionCount++;
+    pthread_mutex_unlock(&session_lock);
+    return sessionid;
+}
+
+void remove_session(const char *userid) {
+    pthread_mutex_lock(&session_lock);
+    for (int i = 0; i < sessionCount; i++) {
+        if (strcmp(activeSessions[i].userid, userid) == 0) {
+            for (int j = i; j < sessionCount - 1; j++) {
+                activeSessions[j] = activeSessions[j + 1];
+            }
+            sessionCount--;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&session_lock);
+
+}
+
+
 
 
 int authentication(int role,const char *userid, const char *password){
@@ -133,7 +181,11 @@ void handle_client(int client_sock) {
     	
 
     	//check if the user is online or not
-
+        if(isOnline(userid)){
+            strcpy(buffer,"User already logged in.");
+            send(buffer,sizeof(buffer),0);
+            continue;
+        }
 
     	//Authenticate the user
     	int auth=authentication(role,userid,password);
@@ -145,7 +197,8 @@ void handle_client(int client_sock) {
     		continue;
     	}
         memset(buffer, 0, sizeof(buffer));
-    	snprintf(buffer,sizeof(buffer),"Login Successful !\nWelcome %s",userid);
+        int sessionid = add_session(userid);
+    	snprintf(buffer,sizeof(buffer),"\nLogin Successful !\nWelcome %s\n Session Id:%d",userid,sessionid);
     	send(client_sock,buffer,sizeof(buffer),0);
     	memset(buffer, 0, sizeof(buffer));
 
@@ -228,6 +281,15 @@ void handle_client(int client_sock) {
                 }
                 else if(choice==5){
                     //Apply for a loan
+                    int amount;
+                    memset(buffer, 0, sizeof(buffer));
+                    recv(client_sock, buffer, sizeof(buffer), 0);
+                    sscanf(buffer, "%d",&amount);
+                    apply_for_loan(userid,amount);
+                    memset(buffer, 0, sizeof(buffer));
+                    strcpy(buffer,"\nYour Loan application has been submitted.\n");
+                    send(buffer,sizeof(buffer),0);
+                    memset(buffer, 0, sizeof(buffer));
                 }
                 else if(choice==6){
                     //Change password
@@ -250,22 +312,40 @@ void handle_client(int client_sock) {
                 }
                 else if(choice==7){
                     //Add a feedback
-                    char feedback[100];
+                    char feedback[300];
                     recv(client_sock, buffer, sizeof(buffer), 0);
-                    sscanf(feedback, "%s", buffer);
+                    strcpy(feedback,buffer);
                     memset(buffer, 0, sizeof(buffer));
                     add_feedback(userid,feedback);
                     snprintf(buffer,sizeof(buffer),"\nAdded your feedback.\n");
-                    send(client_sock,buffer,sizeof(buffer));
+                    send(client_sock,buffer,sizeof(buffer),0);
                     memset(buffer, 0, sizeof(buffer));
                 }
                 else if(choice==8){
-                    
+                    //View Transactions
+                    memset(buffer, 0, sizeof(buffer));
+                    struct Transaction transArray[100];
+                    memset(transArray, 0, sizeof(transArray));
+
+                    int result = view_transaction(userid, transArray);
+                    snprintf(buffer,sizeof(buffer),"%d",result);
+                    send(client_sock,buffer,sizeof(buffer),0);
+                    memset(buffer, 0, sizeof(buffer));
+                    if (result==0) {
+                        
+                        snprintf(buffer,sizeof(buffer),"No transactions found or an error occurred.");
+                        send(client_sock, buffer, sizeof(buffer), 0);
+                        memset(buffer, 0, sizeof(buffer));
+                        
+                    }
+                    else{
+                        send(client_sock, transArray, sizeof(transArray), 0);
+                        memset(buffer, 0, sizeof(buffer));
+                    }
                 }
                 else if(choice==9){
                     // Logout
-                    //remove_session(userid);
-                    
+                    remove_session(userid);
                     char *msg = "Logged Out";
                     send(client_sock, msg, strlen(msg), 0);
                     break;
@@ -299,9 +379,39 @@ void handle_client(int client_sock) {
                     send(client_sock, buffer, sizeof(buffer), 0);
                     memset(buffer, 0, sizeof(buffer));
     			}
+                else if(choice==2){
+                    //Modify Customer Details
+                }
+                else if(choice==3){
+                    //Process Loan Application
+                }
+                else if(choice==4){
+                    //View Assigned Loan Applications
+                    memset(buffer, 0, sizeof(buffer));
+                    char temp[1500];
+
+                    int result = view_assigned_loans(userid, temp);
+                    snprintf(buffer,sizeof(buffer),"%d",result);
+                    send(client_sock,buffer,sizeof(buffer),0);
+                    memset(buffer, 0, sizeof(buffer));
+                    if (result==0) {
+                        
+                        snprintf(buffer,sizeof(buffer),"No Loans found or an error occurred.");
+                        send(client_sock, buffer, sizeof(buffer), 0);
+                        memset(buffer, 0, sizeof(buffer));
+                        
+                    }
+                    else{
+                        send(client_sock, temp, sizeof(temp), 0);
+                        memset(buffer, 0, sizeof(buffer));
+                    }
+                }
+                else if(choice==5){
+                    //Change Password
+                }
     			else if(choice==6){
     				// Logout
-                    //remove_session(userid);
+                    remove_session(userid);
                     
                     char *msg = "Logged Out";
                     send(client_sock, msg, strlen(msg), 0);
@@ -334,14 +444,26 @@ void handle_client(int client_sock) {
                     send(client_sock, buffer, sizeof(buffer), 0);
                     memset(buffer, 0, sizeof(buffer));
 
-                } else if (choice == 2) {
+                } 
+                else if (choice == 2) {
                     // Logout
-                    //remove_session(userid);
+                    remove_session(userid);
                     char *msg = "Logged Out";
                     send(client_sock, msg, strlen(msg), 0);
                     break;
-                } else if (choice == 3) {
-                    // Other functionalities
+                } 
+                else if (choice == 3) {
+                    // Add new Manager
+                    char new_manager_id[100], new_manager_password[10];
+                    memset(buffer, 0, sizeof(buffer));
+                    recv(client_sock, buffer, sizeof(buffer), 0);
+                    sscanf(buffer, "%s %s", new_manager_id, new_manager_password);
+                    add_new_manager(new_manager_id, new_manager_password);
+
+                    memset(buffer, 0, sizeof(buffer));
+                    strcpy(buffer,"New Manager Added.");
+                    send(client_sock, buffer, sizeof(buffer), 0);
+                    memset(buffer, 0, sizeof(buffer));
 
                 } else {
                     // Invalid choice
