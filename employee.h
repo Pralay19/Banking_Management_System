@@ -56,6 +56,7 @@ void add_new_customer( char *customer_id, char *password) {
 int view_assigned_loans(char *employeeid,char *buffer){
 
 	struct Loan loan;
+	struct flock lock;
 	FILE *file = fopen("loans.txt", "r");
     if (file == NULL) {
         perror("Error opening transactions file");
@@ -66,12 +67,36 @@ int view_assigned_loans(char *employeeid,char *buffer){
     fseek(file, 0, SEEK_SET);
     int found=0;
     size_t offset = 0;
+
+    lock.l_type = F_RDLCK; 
+    lock.l_whence = SEEK_SET;
+    lock.l_start = 0;
+    lock.l_len = 0; 
+    lock.l_pid = getpid();
+
+    if (fcntl(fd, F_SETLKW, &lock) == -1) {
+        perror("Error locking file");
+        fclose(file);
+        return -1;  // Error while locking
+    }
+
+
     while (fread(&loan, sizeof(struct Loan), 1, file) == 1) {
         if (strcmp(loan.employeeid, employeeid) == 0) {
         	found=1;
             char loan_info[280];
-            snprintf(loan_info, sizeof(loan_info), "UserID: %s, EmployeeID: %s, Amount: %d, Status: %d\n",
-                     loan.userid, loan.employeeid, loan.amount, loan.status);
+            char type[20];
+            if(loan.status==1){
+            	strcpy(type,"Approved");
+            }
+            else if(loan.status==2){
+            	strcpy(type,"Processing");
+            }
+            else if(loan.status==-1){
+            	strcpy(type,"Rejected");
+            }
+            snprintf(loan_info, sizeof(loan_info), "*UserID: %s, Loan Amount: %d, Status: %s\n",
+                     loan.userid, loan.amount, type);
 
             size_t loan_info_len = strlen(loan_info);
                 
@@ -80,9 +105,14 @@ int view_assigned_loans(char *employeeid,char *buffer){
            
         }
     }
+
+    lock.l_type = F_UNLCK;
+    fcntl(fd, F_SETLK, &lock);
     fclose(file);
     return found;
 }
+
+
 
 
 #endif

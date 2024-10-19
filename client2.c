@@ -111,13 +111,16 @@ void employee_program(int sock){
             printf("\n%s", buffer);
             memset(buffer,0,sizeof(buffer));
         }
-        else if(){
+        else if(choice==2){
+        	//Modify Customer Details
 
         }
         else if(choice==3){
+        	//Process Loan Application
 
         }
         else if(choice==4){
+        	//View Assigned Loan Applications
         	memset(buffer, 0, sizeof(buffer));
         	char temp[1500];
 		    
@@ -129,7 +132,7 @@ void employee_program(int sock){
 		    if(result){
 			    int bytes_received = recv(sock, temp, sizeof(temp), 0);
 			    if (bytes_received <= 0) {
-			        printf("Error receiving transactions or no transactions available.\n");
+			        printf("Error receiving loan Applications available.\n");
 			        
 			    }
 			    printf("%s",temp);
@@ -318,6 +321,87 @@ void customer_program(int sock){
 }
 
 
+void manager_program(int sock){
+	char buffer[1024];
+
+	while(1){
+		int choice;
+		printf("\nManager Menu:\n1. Activate/Deactivate Customer accounts\n2. Assign Loan Applications\n3. Review Customer Feedback\n4. Change Password\n5. Logout\nChoose an option: ");
+        scanf("%d", &choice);
+        memset(buffer, 0, sizeof(buffer));
+        snprintf(buffer, sizeof(buffer), "%d", choice);
+        send(sock, buffer, strlen(buffer), 0);
+
+        if(choice==1){
+        	//Activate/Deactivate Customer accounts
+        	char customer_id[100];
+            int result;
+            printf("\nEnter Customer userID: ");
+            scanf("%s", customer_id);
+            printf("\n1->Activate ");
+            printf("\n2->Deactivate ");
+            printf("\nEnter your option: ");
+            scanf("%d", &result);
+
+            memset(buffer, 0, sizeof(buffer));
+            snprintf(buffer, sizeof(buffer), "%s %d", customer_id, result);
+            send(sock, buffer, strlen(buffer), 0);
+            memset(buffer, 0, sizeof(buffer));
+
+            int bytes_received = recv(sock, buffer, sizeof(buffer), 0);
+			if (bytes_received < 0) {
+			    perror("recv failed");
+			} else {
+			    printf("%s\n", buffer);
+			}
+			memset(buffer, 0, sizeof(buffer));
+        }
+        else if(choice==2){
+        	//Assign Loan Applications
+        	char employeeid[100];
+            char loanid[110];
+
+            printf("\nEnter LoanID: ");
+            scanf("%s", loanid);
+            printf("\nEnter the employeeid to which to assign: ");
+            scanf("%s", employeeid);
+
+            memset(buffer, 0, sizeof(buffer));
+            snprintf(buffer, sizeof(buffer), "%s %s", employeeid, loanid);
+            send(sock, buffer, strlen(buffer), 0);
+            memset(buffer, 0, sizeof(buffer));
+
+            int bytes_received = recv(sock, buffer, sizeof(buffer), 0);
+			if (bytes_received < 0) {
+			    perror("recv failed");
+			} else {
+			    printf("%s\n", buffer);
+			}
+			memset(buffer, 0, sizeof(buffer));
+        }
+        else if(choice==3){
+        	//Review Customer feedback
+        	
+        }
+        else if(choice==4){
+        	//Change Password
+        }
+        else if(choice==5){
+        	//Logout
+        	printf("Logging out...\n");
+            memset(buffer, 0, sizeof(buffer));
+
+            recv(sock,buffer,sizeof(buffer),0);
+            printf("\n%s",buffer);
+            memset(buffer, 0, sizeof(buffer));
+            return;
+        }
+        else{
+        	//Invalid Choice
+        }
+	}
+}
+
 
 int main() {
 	int sock=0;
@@ -349,12 +433,10 @@ int main() {
     	memset(buffer, 0, sizeof(buffer));
     	printf("\nEnter role \n1.Customer\n2. Employee\n3. Manager\n4. Administrator\n5. Exit \n\n");
     	scanf("%d",&role_choice);
+    	snprintf(buffer,sizeof(buffer),"%d",role_choice);
+    	send(sock,buffer,sizeof(buffer),0);
     	if(role_choice==5){
     		// The client program is closed
-    		strcpy(userid,"a");
-    		strcpy(password,"b");
-    		snprintf(buffer, sizeof(buffer), "%d %s %s", role_choice,userid,password);
-    		send(sock, buffer,sizeof(buffer),0);
     		close(sock);
     		exit(0);
     	}
@@ -365,7 +447,7 @@ int main() {
         scanf("%s", password);
 
         memset(buffer, 0, sizeof(buffer));
-        snprintf(buffer, sizeof(buffer), "%d %s %s", role_choice, userid, password);
+        snprintf(buffer, sizeof(buffer), "%s %s",userid, password);
         
         send(sock, buffer, strlen(buffer), 0);
         memset(buffer, 0, sizeof(buffer));
@@ -380,7 +462,7 @@ int main() {
         		employee_program(sock);
         	}
         	else if(role_choice==3) {
-        		// manager_program(sock);
+        		 manager_program(sock);
         	}
         	else if(role_choice==4) {
         		admin_program(sock);

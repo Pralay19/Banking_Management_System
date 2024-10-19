@@ -23,7 +23,7 @@
 
 int view_transaction(char *userid, struct Transaction transArray[100]);
 
-void update_transaction(char *userid, char *transaction_type, char *receiver_id, char *debitCredit, int amount); 
+void update_transaction(char *userid, char *transaction_type, char *receiver_id, char *debitCredit, int amount,int current_balance); 
 
 void initialize_transaction_file(char*userid);
 
@@ -126,14 +126,15 @@ int withdraw_money(char* user_id,int amount){
     int fd = fileno(file);
     struct Customer who;
     struct flock lock;
-
+    long position=0;
     // Searching in the file
         while (fread(&who, sizeof(struct Customer), 1, file) == 1) {
             if (strcmp(who.userid, user_id) == 0) {
+            		position = ftell(file) - sizeof(struct Customer);
                     lock.l_type = F_WRLCK;// F_WRLCK for exclusive lock
                     lock.l_whence = SEEK_CUR;
-                    lock.l_start = (-1)*sizeof(struct Customer);
-                    lock.l_len = sizeof(struct Customer);
+                    lock.l_start = 0;
+                    lock.l_len = -sizeof(struct Customer);
                     lock.l_pid = getpid();
                     fcntl(fd, F_SETLKW, &lock);// LOCKING the part where user block is present          
                     if(who.balance<amount){
@@ -142,7 +143,7 @@ int withdraw_money(char* user_id,int amount){
                     int balance=who.balance-amount;
                     who.balance-=amount;
 
-                    fseek(file, (-1)*sizeof(struct Customer), SEEK_SET);
+                    fseek(file, position, SEEK_SET);
                 	fwrite(&who, sizeof(struct Customer), 1, file);
                 	fflush(file);
                     lock.l_type = F_UNLCK; // Unlock
@@ -302,7 +303,7 @@ int change_password(char*user_id,char*password){
     struct Customer who;
     struct flock lock;
 
-    long position=-1;
+    long position=0;
     // Find sender in the file
     fseek(file, 0, SEEK_SET); 
     while (fread(&who, sizeof(struct Customer), 1, file) == 1) {
@@ -573,10 +574,14 @@ int view_transaction(char *userid, struct Transaction transArray[100]) {
 void apply_for_loan(char*userid,int amount){
 
 	struct Loan new_loan;
-    strcpy(new_loan.userid, customer_id);
-    strcpy(new_loan.employeeid, "null");
+	int uniq=rand();
+	char loanid[110];
+	snprintf(loanid,sizeof(loanid),"%d%s",uniq,userid);
+	strcpy(new_loan.loanid,loanid);
+    strcpy(new_loan.userid, userid);
+    strcpy(new_loan.employeeid, "None");
     new_loan.amount=amount;
-    new_loan.status=0;
+    new_loan.status=2;
 
     FILE *file = fopen("loans.txt", "r+");
     if (file == NULL) {

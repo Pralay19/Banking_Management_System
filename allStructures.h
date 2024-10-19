@@ -59,6 +59,7 @@ struct Feedback{
 
 
 struct Loan{
+    char loanid[110];
     char userid[100];
     char employeeid[100];
     int amount;

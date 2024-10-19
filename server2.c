@@ -13,16 +13,22 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <sys/ipc.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/file.h>
 #include <stdbool.h>
+#include <sys/shm.h>
+#include <sys/sem.h>
+
 
 #include "allStructures.h"
 #include "employee.h"
 #include "admin.h"
 #include "customer.h"
+#include "manager.h"
+
 
 #define PORT 8080
 
@@ -32,118 +38,139 @@ struct Session {
     int sessionid;
 };
 
-struct Session activeSessions[100];
-int sessionCount = 0;
+struct Session *activeSessions;
+int *sessionCount;
 
-pthread_mutex_t session_lock = PTHREAD_MUTEX_INITIALIZER;
+int sem_id;
 
-bool isOnline(const char *userid) {
-    pthread_mutex_lock(&session_lock);
-    for (int i = 0; i < sessionCount; i++) {
+struct sembuf sem_lock = {0, -1, 0}; 
+struct sembuf sem_unlock = {0, 1, 0};
+
+void lock() {
+    semop(sem_id, &sem_lock, 1);
+}
+
+void unlock() {
+    semop(sem_id, &sem_unlock, 1);
+}
+
+
+
+bool isOnline(char *userid) {
+    lock();
+    for (int i = 0; i < *sessionCount; i++) {
         if (strcmp(activeSessions[i].userid, userid) == 0) {
-            pthread_mutex_unlock(&session_lock);
+            unlock();
             return true;
         }
     }
-    pthread_mutex_unlock(&session_lock);
+    unlock();
     return false;
 }
 
-int add_session(const char *userid) {
-    pthread_mutex_lock(&session_lock);
-    int sessionid = rand();
-    strcpy(activeSessions[sessionCount].userid, userid);
-    activeSessions[sessionCount].sessionid = sessionid;
-    sessionCount++;
-    pthread_mutex_unlock(&session_lock);
+int add_session(char *userid) {
+    lock();
+    int sessionid = rand();  
+    strcpy(activeSessions[*sessionCount].userid, userid);
+    activeSessions[*sessionCount].sessionid = sessionid;
+    (*sessionCount)++;  
+    unlock();
     return sessionid;
 }
 
-void remove_session(const char *userid) {
-    pthread_mutex_lock(&session_lock);
-    for (int i = 0; i < sessionCount; i++) {
+void remove_session(char *userid) {
+    lock();
+    for (int i = 0; i < *sessionCount; i++) {
         if (strcmp(activeSessions[i].userid, userid) == 0) {
-            for (int j = i; j < sessionCount - 1; j++) {
+            
+            for (int j = i; j < (*sessionCount) - 1; j++) {
                 activeSessions[j] = activeSessions[j + 1];
             }
-            sessionCount--;
+            (*sessionCount)--; 
             break;
         }
     }
-    pthread_mutex_unlock(&session_lock);
-
+    unlock();
 }
 
 
 
-
-int authentication(int role,const char *userid, const char *password){
-	char filename[100];
-	FILE*file;
+int authentication(int role,char *userid,char *password){
+	
 	if(role==1){
 		//CUSTOMER
-		strcpy(filename, "customers.txt");
-		file = fopen(filename, "r");
-        if (file == NULL) {
+        char filename1[100];
+        FILE*file1;
+		strcpy(filename1, "customers.txt");
+		file1 = fopen(filename1, "r+");
+        if (file1 == NULL) {
             perror("Error opening role file");
             return 0;
         }
-        printf("\nFile Opened");
+        
         struct Customer who;
-        fseek(file, 0, SEEK_SET);
-        while (fread(&who, sizeof(struct Customer), 1, file) == 1) {
+        fseek(file1, 0, SEEK_SET);
+        while (fread(&who, sizeof(struct Customer), 1, file1) == 1) {
             printf("\nChecking %s %s",who.userid,who.password);
 	        if (strcmp(who.userid, userid) == 0 && strcmp(who.password, password) == 0) {
 	            
-                fclose(file);
+                fclose(file1);
 	            return 1; // Authentication successful
 	        }
     	}
-        fclose(file);
-        printf("\nUser Not Found");
+        fclose(file1);
+        
 	}
 	else if(role==2){
 		//EMPLOYEE
+        char filename2[100];
+        FILE*file2;
         printf("\nINSIDE EMP %s\n",userid);
-		strcpy(filename, "employees.txt");
-		file = fopen(filename, "r");
-        if (file == NULL) {
+		strcpy(filename2, "employees.txt");
+		file2 = fopen(filename2, "r+");
+        if (file2 == NULL) {
             printf("\nError opening role file\n");
             return 0;
         }
         struct Employee who;
-        fseek(file, 0, SEEK_SET);
-        while (fread(&who, sizeof(struct Employee), 1, file) == 1) {
-	        if (strcmp(who.userid, userid) == 0 && strcmp(who.password, password) == 0) {
+        fseek(file2, 0, SEEK_SET);
+        while (fread(&who, sizeof(struct Employee), 1, file2) == 1) {
+	        printf("\nChecking %s %s",who.userid,who.password);
+            if (strcmp(who.userid, userid) == 0 && strcmp(who.password, password) == 0) {
 	            
-                fclose(file);
+                fclose(file2);
 	            return 1; // Authentication successful
 	        }
     	}
-        fclose(file);
+        fclose(file2);
 	}
 	else if(role==3){
 		//MANAGER
-		strcpy(filename, "managers.txt");
-		file = fopen(filename, "r");
-        if (file == NULL) {
+        char filename3[100];
+        FILE*file3;
+		strcpy(filename3, "managers.txt");
+		file3 = fopen(filename3, "r+");
+        if (file3 == NULL) {
             perror("Error opening role file");
             return 0;
         }
         struct Manager who;
-        fseek(file, 0, SEEK_SET);
-        while (fread(&who, sizeof(struct Manager), 1, file) == 1) {
+        fseek(file3, 0, SEEK_SET);
+        while (fread(&who, sizeof(struct Manager), 1, file3) == 1) {
 	        if (strcmp(who.userid, userid) == 0 && strcmp(who.password, password) == 0) {
-	            
-                fclose(file);
+	            printf("\nChecking %s %s",who.userid,who.password);
+                fclose(file3);
 	            return 1; // Authentication successful
 	        }
     	}
-        fclose(file);
+        fclose(file3);
 	}
 	else if(role==4){
 		//ADMIN
-        if(strstr("pralay",userid) && strstr("123",password)){
+        char admin1[100]="pralay";
+        char admin2[100];
+        char pass[10]="123";
+        if(strcmp(admin1,userid)==0 && strcmp(pass,password)==0){
             return 1;
         }
 	}
@@ -153,43 +180,49 @@ int authentication(int role,const char *userid, const char *password){
 
 
 void handle_client(int client_sock) {
+
+    while(1){
     char buffer[1024];
     char userid[100], password[10];
-    int role;
     int bytes_received;
+    int role;
+    	//Receive role
+        recv(client_sock,buffer,sizeof(buffer),0);
+        sscanf(buffer,"%d",&role);
 
-    while((bytes_received=recv(client_sock, buffer, sizeof(buffer), 0))>0){
-    	//Receive role,userid and password
-    	
+        //Checking if client initiated TERMINATION PROCESS
+        if (role==5){
+            printf("\nClient requested termination\n");
+            close(client_sock);
+            return;
+        }
+
+        //Receive userid,password
+    	bytes_received=recv(client_sock, buffer, sizeof(buffer), 0);
     	if (bytes_received == 0) {
             printf("Client disconnected\n");
         } 
         else {
             //perror("recv");
         }
-    	   
-
+    	printf("\n%s -> %d\n",buffer,role);
+        
     	//Initializing Role,Userid and Password
-    	sscanf(buffer, "%d %s %s", &role, userid, password);
+    	sscanf(buffer, "%s %s", userid, password);
 
-    	//Checking if client initiated TERMINATION PROCESS
-    	if (role==5){
-            printf("\nClient requested termination\n");
-            close(client_sock);
-            return;
-        }
+    	
     	
 
     	//check if the user is online or not
         if(isOnline(userid)){
             strcpy(buffer,"User already logged in.");
-            send(buffer,sizeof(buffer),0);
+            send(client_sock,buffer,sizeof(buffer),0);
             continue;
         }
 
     	//Authenticate the user
     	int auth=authentication(role,userid,password);
-        printf("\nAuth done %d",auth);
+        printf("\nAuth done %d",role);
     	if(auth==0){
     		snprintf(buffer,sizeof(buffer),"Invalid Credentials!");
     		send(client_sock,buffer,sizeof(buffer),0);
@@ -198,7 +231,7 @@ void handle_client(int client_sock) {
     	}
         memset(buffer, 0, sizeof(buffer));
         int sessionid = add_session(userid);
-    	snprintf(buffer,sizeof(buffer),"\nLogin Successful !\nWelcome %s\n Session Id:%d",userid,sessionid);
+    	snprintf(buffer,sizeof(buffer),"\nLogin Successful !\nWelcome %s\n Session Id:%d\n",userid,sessionid);
     	send(client_sock,buffer,sizeof(buffer),0);
     	memset(buffer, 0, sizeof(buffer));
 
@@ -288,7 +321,7 @@ void handle_client(int client_sock) {
                     apply_for_loan(userid,amount);
                     memset(buffer, 0, sizeof(buffer));
                     strcpy(buffer,"\nYour Loan application has been submitted.\n");
-                    send(buffer,sizeof(buffer),0);
+                    send(client_sock,buffer,sizeof(buffer),0);
                     memset(buffer, 0, sizeof(buffer));
                 }
                 else if(choice==6){
@@ -423,6 +456,100 @@ void handle_client(int client_sock) {
     	}
     	else if(role==3){
     		//MANAGER
+            while(1){
+                memset(buffer, 0, sizeof(buffer));
+                recv(client_sock,buffer,sizeof(buffer),0);
+                int choice;
+                sscanf(buffer,"%d",&choice);
+
+
+                if(choice==1){
+                    //Activate/Deactivate Customer accounts
+                    char customer_id[100];
+                    int decision;
+                    memset(buffer, 0, sizeof(buffer));
+                    recv(client_sock, buffer, sizeof(buffer), 0);
+                    sscanf(buffer, "%s %d", customer_id, &decision);
+                    memset(buffer, 0, sizeof(buffer));
+                    int result=activate_d_user(userid, decision);
+                    if(result>0){
+                        if(decision==2){
+                            memset(buffer, 0, sizeof(buffer));
+                            snprintf(buffer,sizeof(buffer),"\nCustomer Account successfully deactivated.");
+                            
+                            send(client_sock,buffer,sizeof(buffer),0);
+                            memset(buffer, 0, sizeof(buffer));
+                        }
+                        else if(decision==1){
+                            memset(buffer, 0, sizeof(buffer));
+                            snprintf(buffer,sizeof(buffer),"\nCustomer Account successfully activated.");
+                            
+                            send(client_sock,buffer,sizeof(buffer),0);
+                            memset(buffer, 0, sizeof(buffer));
+                        }
+                    }
+                    else if(result<0){
+                        if(decision==2){
+                            memset(buffer, 0, sizeof(buffer));
+                            snprintf(buffer,sizeof(buffer),"\nCustomer Account already deactivated.");
+                            
+                            send(client_sock,buffer,sizeof(buffer),0);
+                            memset(buffer, 0, sizeof(buffer));
+                        }
+                        else if(decision==1){
+                            memset(buffer, 0, sizeof(buffer));
+                            snprintf(buffer,sizeof(buffer),"\nCustomer Account already activated.");
+                            
+                            send(client_sock,buffer,sizeof(buffer),0);
+                            memset(buffer, 0, sizeof(buffer));
+                        }
+                    }
+                    else{
+                        
+                        snprintf(buffer,sizeof(buffer),"\nNo such Account found. Please check the User Id.");
+                        send(client_sock,buffer,sizeof(buffer),0);
+                    }
+                }
+                else if(choice==2){
+                    //Assign Loan Applications
+                    char employeeid[100];
+                    char loanid[110];
+                    memset(buffer, 0, sizeof(buffer));
+                    recv(client_sock, buffer, sizeof(buffer), 0);
+                    sscanf(buffer, "%s %s", employeeid, loanid);
+                    memset(buffer, 0, sizeof(buffer));
+                    int result=assign_loan_appl(loanid,employeeid);
+
+                    if(result){
+                        memset(buffer, 0, sizeof(buffer));
+                        snprintf(buffer,sizeof(buffer),"\nLoan application:%s has been assigned to EmployeeId:%s",loanid,employeeid);
+                        send(client_sock,buffer,sizeof(buffer),0);
+                        memset(buffer, 0, sizeof(buffer));
+                    }
+                    else{
+                        memset(buffer, 0, sizeof(buffer));
+                        snprintf(buffer,sizeof(buffer),"\nLoan Application not found.");
+                        send(client_sock,buffer,sizeof(buffer),0);
+                        memset(buffer, 0, sizeof(buffer));
+                    }
+                }
+                else if(choice==3){
+                    //Review Customer feedback
+                }
+                else if(choice==4){
+                    //Change Password
+                }
+                else if(choice==5){
+                    //Logout
+                    remove_session(userid);
+                    char *msg = "Logged Out";
+                    send(client_sock, msg, strlen(msg), 0);
+                    break;
+                }
+                else{
+
+                }
+            }
     	}
     	else if(role==4){
     		//ADMIN
@@ -493,6 +620,19 @@ int main() {
     pid_t pid;
     int opt=1;
 
+
+    //declaring a shared memory
+    int shm_id = shmget(IPC_PRIVATE, sizeof(struct Session) * 100 + sizeof(int), IPC_CREAT | 0666);
+    if (shm_id < 0) {
+        perror("shmget");
+        exit(1);
+    }
+
+    //Attach shared memory 
+    activeSessions = shmat(shm_id, NULL, 0);
+    sessionCount = (int *)(activeSessions + 100); 
+    *sessionCount = 0;
+
     // Create socket
     server_sock = socket(AF_INET, SOCK_STREAM, 0);
     if (server_sock == -1) {
@@ -527,17 +667,21 @@ int main() {
             perror("fork failed");
             exit(EXIT_FAILURE);
         } else if (pid == 0) { 
-        // Child process
-            close(server_sock); // Close the parent socket
+            close(server_sock);
             handle_client(new_sock);
             exit(0); 
         } else { 
-            // Parent process
+            
             close(new_sock); // Close the child's socket
         }
 
         printf("New Client connected\n");
         
     }
+    close(server_sock);
+    shmdt(activeSessions);
+    shmctl(shm_id, IPC_RMID, NULL);
+    semctl(sem_id, 0, IPC_RMID);
+
 
 }
