@@ -20,6 +20,8 @@
 #include "allStructures.h"
 
 
+
+
 // Add a new employee to the system
 void add_new_employee(const char *employee_id, const char *password) {
     

@@ -21,6 +21,7 @@
 #include "allStructures.h"
 
 
+
 int view_transaction(char *userid, struct Transaction transArray[100]);
 
 void update_transaction(char *userid, char *transaction_type, char *receiver_id, char *debitCredit, int amount,int current_balance); 
@@ -495,13 +496,7 @@ void update_transaction(char *userid, char *transaction_type, char *receiver_id,
         }
     }
 
-    // if (i == 100) {
-    //     printf("Transaction array is full, cannot add more transactions.\n");
-    //     lock.l_type = F_UNLCK;
-    //     fcntl(fd, F_SETLK, &lock);  // Unlock the file
-    //     fclose(file);
-    //     return;
-    // }
+   
 
     // Write the updated TransactionFile back to the file
     fseek(file, position, SEEK_SET);

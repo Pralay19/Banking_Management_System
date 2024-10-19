@@ -17,8 +17,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/file.h>
-#include "allStructures.h"
 
+
+#include "allStructures.h"
 
 
 int activate_d_user(char*user_id, int ade){

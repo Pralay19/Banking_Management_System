@@ -187,6 +187,7 @@ void handle_client(int client_sock) {
     int bytes_received;
     int role;
     	//Receive role
+        memset(buffer, 0, sizeof(buffer));
         recv(client_sock,buffer,sizeof(buffer),0);
         sscanf(buffer,"%d",&role);
 
@@ -198,6 +199,7 @@ void handle_client(int client_sock) {
         }
 
         //Receive userid,password
+        memset(buffer, 0, sizeof(buffer));
     	bytes_received=recv(client_sock, buffer, sizeof(buffer), 0);
     	if (bytes_received == 0) {
             printf("Client disconnected\n");
@@ -209,9 +211,6 @@ void handle_client(int client_sock) {
         
     	//Initializing Role,Userid and Password
     	sscanf(buffer, "%s %s", userid, password);
-
-    	
-    	
 
     	//check if the user is online or not
         if(isOnline(userid)){
@@ -402,11 +401,11 @@ void handle_client(int client_sock) {
 
     			if(choice==1){
     				//Add new customer
-    				char new_customer_id[100], new_customer_password[10];
+    				char new_customer_id[100], new_customer_password[10],name[50],mobile[10];
                     memset(buffer, 0, sizeof(buffer));
                     recv(client_sock, buffer, sizeof(buffer), 0);
-                    sscanf(buffer, "%s %s", new_customer_id, new_customer_password);
-                    add_new_customer(new_customer_id, new_customer_password);
+                    sscanf(buffer, "%s %s %s %s", new_customer_id, new_customer_password,name,mobile);
+                    add_new_customer(new_customer_id, new_customer_password,name,mobile);
 
                     strcpy(buffer,"New Customer Added.");
                     send(client_sock, buffer, sizeof(buffer), 0);
@@ -414,7 +413,24 @@ void handle_client(int client_sock) {
     			}
                 else if(choice==2){
                     //Modify Customer Details
+                    int decision;
+                    char change[100],cust_id[100];
+                    sscanf(buffer,"%s",cust_id);
+                    memset(buffer, 0, sizeof(buffer));
+                    recv(client_sock,buffer,sizeof(buffer),0);
+                    memset(buffer, 0, sizeof(buffer));
 
+                    view_customer(cust_id,buffer);
+                    send(client_sock,buffer,sizeof(buffer),0);
+
+                    memset(buffer, 0, sizeof(buffer));
+                    recv(client_sock,buffer,sizeof(buffer),0);
+                    sscanf(buffer,"%d %s",&decision,change);
+                    modify_custm(cust_id,change,decision);
+                    memset(buffer, 0, sizeof(buffer));
+                    snprintf(buffer,sizeof(buffer),"Customer Details Modified!");
+                    send(client_sock,buffer,sizeof(buffer),0);
+                    memset(buffer, 0, sizeof(buffer));
                 }
                 else if(choice==3){
                     //Process Loan Application
@@ -460,6 +476,15 @@ void handle_client(int client_sock) {
                 }
                 else if(choice==5){
                     //Change Password
+                    char new_password[10];
+                    memset(buffer, 0, sizeof(buffer));
+                    recv(client_sock, buffer, sizeof(buffer), 0);
+                    sscanf(buffer, "%s", new_password);
+                    change_password_emp(userid, new_password);
+                    memset(buffer, 0, sizeof(buffer));
+                    snprintf(buffer,sizeof(buffer),"\nPassword changed successfully.");
+                    send(client_sock,buffer,sizeof(buffer),0);
+                    memset(buffer, 0, sizeof(buffer));
                 }
     			else if(choice==6){
     				// Logout
@@ -637,6 +662,36 @@ void handle_client(int client_sock) {
                     snprintf(buffer,sizeof(buffer),"The Employee has been Promoted to Manager!");
                     send(client_sock,buffer,sizeof(buffer),0);
                     memset(buffer, 0, sizeof(buffer));
+                }
+                else if(choice==5){
+                    //Change Password
+                    char new_password[10];
+                    memset(buffer, 0, sizeof(buffer));
+                    recv(client_sock, buffer, sizeof(buffer), 0);
+                    sscanf(buffer, "%s", new_password);
+                    change_password_admin(userid, new_password);
+                    memset(buffer, 0, sizeof(buffer));
+                    snprintf(buffer,sizeof(buffer),"\nPassword changed successfully.");
+                    send(client_sock,buffer,sizeof(buffer),0);
+                    memset(buffer, 0, sizeof(buffer));
+                }
+                else if(choice==6){
+                    //Modify Customer Details
+                    int decision;
+                    char change[100],cust_id[100];
+
+                    memset(buffer, 0, sizeof(buffer));
+                    recv(client_sock,buffer,sizeof(buffer),0);
+                    sscanf(buffer,"%d %s %s",&decision,cust_id,change);
+                    modify_custm(cust_id,change,decision);
+                    memset(buffer, 0, sizeof(buffer));
+                    snprintf(buffer,sizeof(buffer),"Customer Details Modified!");
+                    send(client_sock,buffer,sizeof(buffer),0);
+                    memset(buffer, 0, sizeof(buffer));
+                }
+                else if(choice==7){
+                    //Add new admin
+
                 }
                 else {
                     // Invalid choice

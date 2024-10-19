@@ -17,14 +17,20 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/file.h>
+
+
 #include "allStructures.h"
 #include "customer.h"
 
-void add_new_customer( char *customer_id, char *password) {
+
+
+void add_new_customer( char *customer_id, char *password,char *name,char *mobile) {
     
     struct Customer new_customer;
     strcpy(new_customer.userid, customer_id);
     strcpy(new_customer.password, password);
+    strcpy(new_customer.name, name);
+    strcpy(new_customer.mobile, mobile);
     new_customer.balance=0;
     FILE *file = fopen("customers.txt", "r+");
     if (file == NULL) {
@@ -154,5 +160,88 @@ void change_password_emp(char*user_id,char*password){
     fclose(file);
 }
 
+void modify_custm(char*user_id,char*change,int decision){
+
+	FILE *file = fopen("customers.txt", "r+");
+    if (file == NULL) {
+        perror("Error opening file");
+        return ;
+    }
+
+    int fd = fileno(file);
+    struct Customer who;
+    struct flock lock;
+    long position;
+
+    // Searching in the file
+        while (fread(&who, sizeof(struct Customer), 1, file) == 1) {
+            if (strcmp(who.userid, user_id) == 0) {
+                    position = ftell(file) - sizeof(struct Customer);
+                    lock.l_type = F_WRLCK;
+                    lock.l_whence = SEEK_CUR;
+                    lock.l_start = 0;
+                    lock.l_len = -sizeof(struct Customer);
+                    lock.l_pid = getpid();
+                    fcntl(fd, F_SETLKW, &lock);          
+                    if(decision==1){
+                    	strcpy(who.name,change);
+                    }
+                    else{
+                    	strcpy(who.mobile,change);
+                    }
+
+                    fseek(file, position, SEEK_SET);
+                	fwrite(&who, sizeof(struct Customer), 1, file);
+                	fflush(file);
+                    lock.l_type = F_UNLCK; // Unlock
+                    if (fcntl(fd, F_SETLK, &lock) == -1) {
+                        perror("fcntl");
+                        return ;
+                    }
+                    break;      
+            }
+       }
+
+    fclose(file);
+
+}
+
+void view_customer(char*user_id,char*buffer){
+
+	FILE *file = fopen("customers.txt", "r");
+    if (file == NULL) {
+        perror("Error opening file");
+        return ;
+    }
+
+    int fd = fileno(file);
+    struct Customer who;
+    struct flock lock;
+    
+
+    // Searching in the file
+        while (fread(&who, sizeof(struct Customer), 1, file) == 1) {
+            if (strcmp(who.userid, user_id) == 0) {
+                    
+                    lock.l_type = F_RDLCK;// F_WRLCK for exclusive lock
+                    lock.l_whence = SEEK_CUR;
+                    lock.l_start = 0;
+                    lock.l_len = -sizeof(struct Customer);
+                    lock.l_pid = getpid();
+                    fcntl(fd, F_SETLKW, &lock);// LOCKING the part where user block is present          
+                    char info[300];
+                    snprintf(info,sizeof(info),"%s %s",who.name,who.mobile);
+                    strcat(buffer,info);
+                    lock.l_type = F_UNLCK; // Unlock
+                    if (fcntl(fd, F_SETLK, &lock) == -1) {
+                        perror("fcntl");
+                        return ;
+                    }
+                    fclose(file);
+                    return ;
+            }
+       }
+    fclose(file);
+}
 
 #endif

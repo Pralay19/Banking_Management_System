@@ -11,6 +11,8 @@
 struct Customer {
     char userid[100];
     char password[10];
+    char name[50];
+    char mobile[12];
     int balance;
 };
 

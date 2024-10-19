@@ -26,7 +26,7 @@ void admin_program(int sock){
 	while(1){
 		int choice;
 		printf("\nAdmin Menu:\n");
-        printf("1. Add New Employee\n2. Logout\n3. Add new Manager\n4.Manage user roles\n5.Change Password\nChoose an option: ");
+        printf("1. Add New Employee\n2. Logout\n3. Add new Manager\n4.Manage user roles\n5.Change Password\n6.Modify Customer Details\n7.Add new Admin\nChoose an option: ");
         scanf("%d",&choice);
         memset(buffer, 0, sizeof(buffer));
         snprintf(buffer, sizeof(buffer), "%d", choice);
@@ -92,7 +92,43 @@ void admin_program(int sock){
         }
         else if(choice==5){
         	//Change Password
+        	char password[10];
+            printf("\nEnter new password(10 characters): ");
+            scanf("%s", password);
+            memset(buffer, 0, sizeof(buffer));
+            snprintf(buffer, sizeof(buffer), "%s", password);
+            send(sock, buffer, strlen(buffer), 0);
+            memset(buffer, 0, sizeof(buffer));
+            recv(sock,buffer,sizeof(buffer),0);
+            printf("%s",buffer);
+            memset(buffer, 0, sizeof(buffer));
+        }
+        else if(choice==6){
+        	//Modify Customer details
+        	int decision;
+        	char change[100],cust_id[100];
+        	printf("\nEnter the Customer userID: ");
+        	scanf("%s",cust_id);
+        	printf("\nWhat do you want to change?");
         	
+        	printf("\n1->Name of Customer: ");
+        	printf("\n2-> Customer mobile no.: \n");
+        	scanf("%d",&decision);
+
+        	printf("\nEnter the modified info: ");
+        	scanf(" %[^\n]", change);
+        	memset(buffer,0,sizeof(buffer));
+        	snprintf(buffer,sizeof(buffer),"%d %s %s",decision,cust_id,change);
+
+        	send(sock,buffer,sizeof(buffer),0);
+        	memset(buffer,0,sizeof(buffer));
+        	recv(sock, buffer, sizeof(buffer), 0);
+        	printf("%s",buffer);
+        	memset(buffer,0,sizeof(buffer));
+        }
+        else if(choice==7){
+        	//Add new admin
+
         }
         else {
             printf("\nInvalid choice. Please try again.\n");
@@ -115,12 +151,16 @@ void employee_program(int sock){
 
         if (choice == 1) {
             // Add New Customer
-            char userid[100],password[10];
-            printf("Enter new customer UserID: ");
+            char userid[100],password[10],name[50],mobile[10];
+            printf("\nEnter new Customer UserID: ");
             scanf("%s", userid);
-            printf("Enter password for the new customer: ");
+            printf("\nEnter password for the new Customer: ");
             scanf("%s", password);
-            snprintf(buffer, sizeof(buffer), "%s %s", userid, password);
+            printf("\nEnter Name of Customer: ");
+            scanf(" %[^\n]", name);
+            printf("\nEnter Customer mobile no.: ");
+            scanf(" %[^\n]", mobile);
+            snprintf(buffer, sizeof(buffer), "%s %s %s %s", userid, password,name,mobile);
             send(sock, buffer, strlen(buffer), 0);
             memset(buffer, 0, sizeof(buffer));
             recv(sock, buffer, sizeof(buffer), 0);
@@ -129,8 +169,32 @@ void employee_program(int sock){
         }
         else if(choice==2){
         	//Modify Customer Details
+        	int decision;
+        	char change[100],cust_id[100];
+        	printf("\nEnter the Customer userID: ");
+        	scanf("%s",cust_id);
+        	memset(buffer,0,sizeof(buffer));
+        	snprintf(buffer,sizeof(buffer),"%s",cust_id);
+        	send(sock,buffer,sizeof(buffer),0);
+        	recv(sock, buffer, sizeof(buffer), 0);
+        	printf("\n%s\n",buffer);
 
+        	printf("\nWhat do you want to change?");
+        	
+        	printf("\n1->Name of Customer: ");
+        	printf("\n2-> Customer mobile no.: \n");
+        	scanf("%d",&decision);
 
+        	printf("\nEnter the modified info: ");
+        	scanf(" %[^\n]", change);
+        	memset(buffer,0,sizeof(buffer));
+        	snprintf(buffer,sizeof(buffer),"%d %s",decision,change);
+
+        	send(sock,buffer,sizeof(buffer),0);
+        	memset(buffer,0,sizeof(buffer));
+        	recv(sock, buffer, sizeof(buffer), 0);
+        	printf("%s",buffer);
+        	memset(buffer,0,sizeof(buffer));
         }
         else if(choice==3){
         	//Process Loan Application
@@ -178,6 +242,10 @@ void employee_program(int sock){
 
 			}
 		    memset(buffer, 0, sizeof(buffer));
+        }
+        else if(choice==5){
+        	//Change Password
+
         }
         else if(choice==6){
         	// Logout
@@ -511,7 +579,7 @@ int main() {
         		employee_program(sock);
         	}
         	else if(role_choice==3) {
-        		 manager_program(sock);
+        		manager_program(sock);
         	}
         	else if(role_choice==4) {
         		admin_program(sock);
