@@ -26,7 +26,7 @@ void admin_program(int sock){
 	while(1){
 		int choice;
 		printf("\nAdmin Menu:\n");
-        printf("1. Add New Employee\n2. Logout\n3. Add new Manager\nChoose an option: ");
+        printf("1. Add New Employee\n2. Logout\n3. Add new Manager\n4.Manage user roles\n5.Change Password\nChoose an option: ");
         scanf("%d",&choice);
         memset(buffer, 0, sizeof(buffer));
         snprintf(buffer, sizeof(buffer), "%d", choice);
@@ -78,8 +78,24 @@ void admin_program(int sock){
             memset(buffer, 0, sizeof(buffer));
 
         }
+        else if(choice==4){
+        	//Manage user roles
+        	printf("\nPROMOTE EMPLOYEE -> MANAGER:\n");
+        	printf("\nEnter employee UserID: ");
+            scanf("%s", employee_id);
+            
+            memset(buffer, 0, sizeof(buffer));
+            snprintf(buffer, sizeof(buffer), "%s", employee_id);
+            send(sock, buffer, strlen(buffer), 0);
+            memset(buffer, 0, sizeof(buffer));
+
+        }
+        else if(choice==5){
+        	//Change Password
+        	
+        }
         else {
-            printf("Invalid choice. Please try again.\n");
+            printf("\nInvalid choice. Please try again.\n");
         }
 
 	}

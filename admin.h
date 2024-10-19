@@ -83,9 +83,98 @@ void add_new_manager(const char *manager_id, const char *password) {
     fclose(file);
 }
 
-// void manage_roles(){
+void manage_roles(char*employeeid){
     
-// }
+    //Removing the Loans assigned
+    struct Loan loan;
+    struct flock lock;
+    FILE *file = fopen("loans.txt", "r");
+    if (file == NULL) {
+        perror("Error opening transactions file");
+        return ; 
+    }
+    
+    int fd = fileno(file);
+    fseek(file, 0, SEEK_SET);
+    long position=0;
+
+    while (fread(&loan, sizeof(struct Loan), 1, file) == 1) {
+        if (strcmp(loan.employeeid, employeeid) == 0 && loan.status==2) {
+            position=ftell(file)-sizeof(struct Loan);
+            lock.l_type = F_WRLCK; 
+            lock.l_whence = SEEK_SET;
+            lock.l_start = position;
+            lock.l_len = sizeof(struct Loan); 
+            lock.l_pid = getpid();
+
+            if (fcntl(fd, F_SETLKW, &lock) == -1) {
+                perror("Error locking file");
+                fclose(file);
+                return ;  // Error while locking
+            }
+
+            strcpy(loan.employeeid,"None");
+
+            fseek(file,position,SEEK_SET);
+            if (fwrite(&loan, sizeof(struct Loan), 1, file) != 1) {
+            printf("\nError writing new loan to file\n");
+            }
+            fflush(file);
+            lock.l_type = F_UNLCK;
+            fcntl(fd, F_SETLKW, &lock);
+
+        }
+    }
+    fclose(file);
+
+    //removing from emplyoees
+    char password[10];
+    FILE*file2;
+    file2 = fopen("employees.txt", "r+");
+    if (file2 == NULL) {
+        printf("\nError opening role file\n");
+        return;
+    }
+    fd=fileno(file2);
+    struct Employee who;
+
+    fseek(file2, 0, SEEK_SET);
+    position=0;
+    while (fread(&who, sizeof(struct Employee), 1, file2) == 1) {
+        if (strcmp(who.userid, employeeid) == 0) {
+            position=ftell(file2)-sizeof(struct Employee);
+            break;
+        }
+    }
+
+    lock.l_type = F_WRLCK;
+    lock.l_whence = SEEK_SET;
+    lock.l_start = position;
+    lock.l_len = sizeof(struct Admin);
+    lock.l_pid = getpid();
+    if (fcntl(fd, F_SETLKW, &lock) == -1) {
+        perror("Error locking sender");
+        fclose(file2);
+        return;
+    }
+    strcpy(who.userid,"#");
+    strcpy(password,who.password);
+
+    fseek(file, position, SEEK_SET);
+    fwrite(&who, sizeof(struct Customer), 1, file);
+    fflush(file);
+
+    lock.l_type = F_UNLCK;
+    fcntl(fd, F_SETLKW, &lock);
+
+    fclose(file);
+
+
+    //Editing the manager file
+
+    add_new_manager(employeeid,password);
+
+}
 
 
 void change_password_admin(char*user_id,char*password){

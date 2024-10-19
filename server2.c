@@ -231,7 +231,7 @@ void handle_client(int client_sock) {
     	}
         memset(buffer, 0, sizeof(buffer));
         int sessionid = add_session(userid);
-    	snprintf(buffer,sizeof(buffer),"\nLogin Successful !\nWelcome %s\n Session Id:%d\n",userid,sessionid);
+    	snprintf(buffer,sizeof(buffer),"\nLogin Successful !\nNamaskaram %s\n Session Id:%d\n",userid,sessionid);
     	send(client_sock,buffer,sizeof(buffer),0);
     	memset(buffer, 0, sizeof(buffer));
 
@@ -300,7 +300,7 @@ void handle_client(int client_sock) {
                         }
                         else{
                             memset(buffer, 0, sizeof(buffer));
-                            snprintf(buffer,sizeof(buffer),"Insuffecient Balance.");
+                            snprintf(buffer,sizeof(buffer),"Bhai Paise nahi hai tere paas itne!.");
                             send(client_sock,buffer,sizeof(buffer),0);
                             memset(buffer, 0, sizeof(buffer));
                         }
@@ -625,10 +625,22 @@ void handle_client(int client_sock) {
                     send(client_sock, buffer, sizeof(buffer), 0);
                     memset(buffer, 0, sizeof(buffer));
 
-                } else {
+                } 
+                else if(choice==4){
+                    //Manage user roles
+                    char employee_id[100];
+                    memset(buffer, 0, sizeof(buffer));
+                    recv(client_sock, buffer, sizeof(buffer), 0);
+                    sscanf(buffer, "%s", employee_id);
+
+                    manage_roles(employee_id);
+                    snprintf(buffer,sizeof(buffer),"The Employee has been Promoted to Manager!");
+                    send(client_sock,buffer,sizeof(buffer),0);
+                    memset(buffer, 0, sizeof(buffer));
+                }
+                else {
                     // Invalid choice
-                    char *msg1 = "Invalid option.";
-                    send(client_sock, msg1, strlen(msg1), 0);
+                    
                 }
     		}
 

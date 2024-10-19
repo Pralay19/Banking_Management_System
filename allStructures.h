@@ -34,8 +34,6 @@ struct TransactionFile{
 struct Employee{
     char userid[100];
     char password[10];
-    int loanAppl[100];
-
 
 };
 
