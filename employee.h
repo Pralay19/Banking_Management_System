@@ -112,7 +112,47 @@ int view_assigned_loans(char *employeeid,char *buffer){
     return found;
 }
 
+void change_password_emp(char*user_id,char*password){
+	FILE *file = fopen("employees.txt", "r+");
+    if (file == NULL) {
+        perror("Error opening file");
+        return ;
+    }
+    int fd = fileno(file);
+    struct Employee who;
+    struct flock lock;
 
+    long position=0;
+    // Find sender in the file
+    fseek(file, 0, SEEK_SET); 
+    while (fread(&who, sizeof(struct Employee), 1, file) == 1) {
+        if (strcmp(who.userid, user_id) == 0) {
+            position = ftell(file) - sizeof(struct Employee);
+            break;
+        }
+    }
+
+    lock.l_type = F_WRLCK;
+    lock.l_whence = SEEK_SET;
+    lock.l_start = position;
+    lock.l_len = sizeof(struct Employee);
+    lock.l_pid = getpid();
+    if (fcntl(fd, F_SETLKW, &lock) == -1) {
+        perror("Error locking sender");
+        fclose(file);
+        return ;
+    }
+    strcpy(who.password, password);
+
+    fseek(file, position, SEEK_SET);
+    fwrite(&who, sizeof(struct Employee), 1, file);
+        
+    lock.l_start = position;  
+    lock.l_type = F_UNLCK;
+    fcntl(fd, F_SETLK, &lock);
+
+    fclose(file);
+}
 
 
 #endif

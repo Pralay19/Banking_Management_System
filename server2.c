@@ -330,7 +330,7 @@ void handle_client(int client_sock) {
                     memset(buffer, 0, sizeof(buffer));
                     recv(client_sock, buffer, sizeof(buffer), 0);
                     sscanf(buffer, "%s", new_password);
-                    int result=change_password(userid, new_password);
+                    int result=change_password_custm(userid, new_password);
                     if(result){
                         memset(buffer, 0, sizeof(buffer));
                         snprintf(buffer,sizeof(buffer),"\nPassword changed successfully.");
@@ -414,9 +414,28 @@ void handle_client(int client_sock) {
     			}
                 else if(choice==2){
                     //Modify Customer Details
+
                 }
                 else if(choice==3){
                     //Process Loan Application
+                    char loanid[110];
+                    int decision;
+                    
+                    memset(buffer, 0, sizeof(buffer));
+                    recv(client_sock,buffer,sizeof(buffer),0);
+
+                    memset(buffer, 0, sizeof(buffer));
+                    sscanf(buffer,"%s",loanid);
+                    search_loan(loanid,buffer);
+                    send(client_sock,buffer,sizeof(buffer),0);
+
+                    memset(buffer, 0, sizeof(buffer));
+                    recv(client_sock,buffer,sizeof(buffer),0);
+                    sscanf(buffer,"%d",&decision);
+
+                    process_loan(loanid,decision);
+                    memset(buffer, 0, sizeof(buffer));
+
                 }
                 else if(choice==4){
                     //View Assigned Loan Applications
@@ -535,9 +554,23 @@ void handle_client(int client_sock) {
                 }
                 else if(choice==3){
                     //Review Customer feedback
+                    memset(buffer, 0, sizeof(buffer));
+                    char temp[1500];
+
+                    view_feedback(temp);
+                    send(client_sock,temp,sizeof(temp),0);
+                    memset(buffer, 0, sizeof(buffer));
                 }
                 else if(choice==4){
                     //Change Password
+                    char new_password[10];
+                    memset(buffer, 0, sizeof(buffer));
+                    recv(client_sock, buffer, sizeof(buffer), 0);
+                    sscanf(buffer, "%s", new_password);
+                    change_password_man(userid, new_password);
+                    snprintf(buffer,sizeof(buffer),"\nPassword changed successfully.");
+                    send(client_sock,buffer,sizeof(buffer),0);
+                    memset(buffer, 0, sizeof(buffer));
                 }
                 else if(choice==5){
                     //Logout
@@ -547,7 +580,7 @@ void handle_client(int client_sock) {
                     break;
                 }
                 else{
-
+                    //Invalid Choice
                 }
             }
     	}

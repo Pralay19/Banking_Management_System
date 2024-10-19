@@ -292,7 +292,7 @@ int transfer_funds(char* user_id, char* receiver_id, int amount) {
     return sender.balance;  
 }
 
-int change_password(char*user_id,char*password){
+int change_password_custm(char*user_id,char*password){
 
 	FILE *file = fopen("customers.txt", "r+");
     if (file == NULL) {
