@@ -21,7 +21,7 @@
 #include <stdbool.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
-
+#include <crypt.h>
 
 #include "allStructures.h"
 #include "employee.h"
