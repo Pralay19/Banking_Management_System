@@ -14,14 +14,70 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <termios.h>
 
 #include "allStructures.h"
 
 
 #define PORT 8080
 
+void disable_echo_and_buffering() {
+    struct termios tty;
+    tcgetattr(STDIN_FILENO, &tty);          
+    tty.c_lflag &= ~(ECHO | ICANON);        
+    tcsetattr(STDIN_FILENO, TCSANOW, &tty); 
+}
+
+void restore_terminal() {
+    struct termios tty;
+    tcgetattr(STDIN_FILENO, &tty);          
+    tty.c_lflag |= (ECHO | ICANON);         
+    tcsetattr(STDIN_FILENO, TCSANOW, &tty); 
+}
+
+void get_password(char *password) {
+    char ch;
+    size_t index = 0;
+
+    disable_echo_and_buffering();
+
+    
+    while (index < 10- 1) {
+        ch = getchar();  // Get a character
+
+        // If Enter (newline) is pressed, break the loop
+        if (ch == '\n' || ch == '\r') {
+            break;
+        }
+
+        
+        if (ch == 127 || ch == '\b') { 
+            if (index > 0) {
+                index--;
+                printf("\b \b");  
+            }
+        } else {
+            password[index++] = ch; 
+            printf("*");
+            fflush(stdout);     
+        }
+    }
+    password[index] = '\0'; 
+
+    // Re-enable echo after password input
+    restore_terminal();
+    printf("\n");  
+
+}
+
+
+
+
+
+
+
 void admin_program(int sock){
-	char buffer[1024], employee_id[100], password[10],manager_id[100];
+	char buffer[1024], employee_id[100], password[10],manager_id[100],admin_id[100];
 
 	while(1){
 		int choice;
@@ -132,6 +188,17 @@ void admin_program(int sock){
         }
         else if(choice==7){
         	//Add new admin
+        	printf("Enter new Admin UserID: ");
+            scanf("%s", admin_id);
+            printf("Enter password for the new Admin: ");
+            scanf("%s", password);
+            memset(buffer, 0, sizeof(buffer));
+            snprintf(buffer, sizeof(buffer), "%s %s", admin_id, password);
+            send(sock, buffer, strlen(buffer), 0);
+            memset(buffer, 0, sizeof(buffer));
+            recv(sock, buffer, sizeof(buffer), 0);
+            printf("\n%s", buffer);
+            memset(buffer, 0, sizeof(buffer));
 
         }
         else {
@@ -589,8 +656,11 @@ int main() {
 
     	printf("\nEnter User ID: ");
         scanf("%s", userid);
-        printf("\nEnter Password: ");
-        scanf("%s", password);
+
+        while (getchar() != '\n');
+
+        printf("\nEnter your Password: ");
+        get_password(password);
 
         memset(buffer, 0, sizeof(buffer));
         snprintf(buffer, sizeof(buffer), "%s %s",userid, password);

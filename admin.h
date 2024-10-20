@@ -221,7 +221,36 @@ void change_password_admin(char*user_id,char*password){
     fclose(file);
 }
 
+void add_new_admin(char*admin_id,char*password){
 
+    struct Admin new_admin;
+    strcpy(new_admin.userid, admin_id);
+    strcpy(new_admin.password, password);
+
+    FILE *file = fopen("admins.txt", "r+");
+    if (file == NULL) {
+        perror("Error opening file");
+        return;
+    }
+
+    struct flock lock;
+    int fd = fileno(file);
+    lock.l_type = F_WRLCK;
+    lock.l_whence = SEEK_END;
+    lock.l_start = 0;
+    lock.l_len = sizeof(struct Admin);  
+    lock.l_pid = getpid();
+    fcntl(fd, F_SETLKW, &lock);
+    fseek(file,0,SEEK_END);
+    if (fwrite(&new_admin, sizeof(struct Admin), 1, file) != 1) {
+    printf("\nError writing new employee to file\n");
+    }
+    fflush(file);
+    lock.l_type = F_UNLCK;
+    fcntl(fd, F_SETLKW, &lock);
+
+    fclose(file);
+}
 
 
 #endif

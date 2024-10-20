@@ -111,7 +111,7 @@ int authentication(int role,char *userid,char *password){
         struct Customer who;
         fseek(file1, 0, SEEK_SET);
         while (fread(&who, sizeof(struct Customer), 1, file1) == 1) {
-            printf("\nChecking %s %s",who.userid,who.password);
+            
 	        if (strcmp(who.userid, userid) == 0 && strcmp(who.password, password) == 0) {
 	            
                 fclose(file1);
@@ -125,7 +125,7 @@ int authentication(int role,char *userid,char *password){
 		//EMPLOYEE
         char filename2[100];
         FILE*file2;
-        printf("\nINSIDE EMP %s\n",userid);
+        
 		strcpy(filename2, "employees.txt");
 		file2 = fopen(filename2, "r+");
         if (file2 == NULL) {
@@ -135,7 +135,7 @@ int authentication(int role,char *userid,char *password){
         struct Employee who;
         fseek(file2, 0, SEEK_SET);
         while (fread(&who, sizeof(struct Employee), 1, file2) == 1) {
-	        printf("\nChecking %s %s",who.userid,who.password);
+	        
             if (strcmp(who.userid, userid) == 0 && strcmp(who.password, password) == 0) {
 	            
                 fclose(file2);
@@ -158,7 +158,7 @@ int authentication(int role,char *userid,char *password){
         fseek(file3, 0, SEEK_SET);
         while (fread(&who, sizeof(struct Manager), 1, file3) == 1) {
 	        if (strcmp(who.userid, userid) == 0 && strcmp(who.password, password) == 0) {
-	            printf("\nChecking %s %s",who.userid,who.password);
+	            
                 fclose(file3);
 	            return 1; // Authentication successful
 	        }
@@ -168,11 +168,23 @@ int authentication(int role,char *userid,char *password){
 	else if(role==4){
 		//ADMIN
         char admin1[100]="pralay";
-        char admin2[100];
         char pass[10]="123";
         if(strcmp(admin1,userid)==0 && strcmp(pass,password)==0){
             return 1;
         }
+        FILE*file4=fopen("admins.txt","r+");
+        
+        struct Admin who;
+        fseek(file4, 0, SEEK_SET);
+        while (fread(&who, sizeof(struct Admin), 1, file4) == 1) {
+            if (strcmp(who.userid, userid) == 0 && strcmp(who.password, password) == 0) {
+                
+                fclose(file4);
+                return 1; // Authentication successful
+            }
+        }
+        fclose(file4);
+
 	}
 
 	return 0;
@@ -243,7 +255,7 @@ void handle_client(int client_sock) {
                 sscanf(buffer,"%d",&choice);
 
                 if(choice==1){
-                    // //View balance
+                    //View balance
                     int amount=0;
                     amount=view_account_balance(userid);
                     snprintf(buffer,sizeof(buffer),"Available Balance: $%d",amount);
@@ -713,7 +725,16 @@ void handle_client(int client_sock) {
                 }
                 else if(choice==7){
                     //Add new admin
+                    char admin_id[100], admin_password[10];
+                    memset(buffer, 0, sizeof(buffer));
+                    recv(client_sock, buffer, sizeof(buffer), 0);
+                    sscanf(buffer, "%s %s", admin_id, admin_password);
+                    add_new_admin(admin_id, admin_password);
 
+                    memset(buffer, 0, sizeof(buffer));
+                    strcpy(buffer,"New Admin Added.");
+                    send(client_sock, buffer, sizeof(buffer), 0);
+                    memset(buffer, 0, sizeof(buffer));
                 }
                 else {
                     // Invalid choice
