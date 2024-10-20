@@ -112,7 +112,7 @@ int authentication(int role,char *userid,char *password){
         fseek(file1, 0, SEEK_SET);
         while (fread(&who, sizeof(struct Customer), 1, file1) == 1) {
             
-	        if (strcmp(who.userid, userid) == 0 && strcmp(who.password, password) == 0) {
+	        if (strcmp(who.userid, userid) == 0 && strcmp(who.password, password) == 0 && who.active == 1) {
 	            
                 fclose(file1);
 	            return 1; // Authentication successful
@@ -535,7 +535,8 @@ void handle_client(int client_sock) {
                     recv(client_sock, buffer, sizeof(buffer), 0);
                     sscanf(buffer, "%s %d", customer_id, &decision);
                     memset(buffer, 0, sizeof(buffer));
-                    int result=activate_d_user(userid, decision);
+                    int result=activate_d_user(customer_id, decision);
+                    printf("%s %d",customer_id,result);
                     if(result>0){
                         if(decision==2){
                             memset(buffer, 0, sizeof(buffer));

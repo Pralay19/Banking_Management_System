@@ -60,6 +60,7 @@ int add_new_customer( char *customer_id, char *password,char *name,char *mobile)
     strcpy(new_customer.name, name);
     strcpy(new_customer.mobile, mobile);
     new_customer.balance=0;
+    new_customer.active=1;
     FILE *file = fopen("customers.txt", "r+");
     if (file == NULL) {
         perror("Error opening file");

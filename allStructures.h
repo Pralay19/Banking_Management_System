@@ -14,6 +14,7 @@ struct Customer {
     char name[50];
     char mobile[12];
     int balance;
+    int active;
 };
 
 struct Transaction{

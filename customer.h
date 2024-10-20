@@ -182,6 +182,8 @@ int transfer_funds(char* user_id, char* receiver_id, int amount) {
     long sender_position = -1, receiver_position = -1;
     int sender_found = 0, receiver_found = 0;
 
+
+
     // Find sender in the file
     fseek(file, 0, SEEK_SET); 
     while (fread(&sender, sizeof(struct Customer), 1, file) == 1) {
@@ -192,11 +194,6 @@ int transfer_funds(char* user_id, char* receiver_id, int amount) {
         }
     }
 
-    if (!sender_found) {
-        fclose(file);
-        printf("Sender not found\n");
-        return 0;
-    }
 
     // Find receiver in the file
     fseek(file, 0, SEEK_SET); 
@@ -208,7 +205,7 @@ int transfer_funds(char* user_id, char* receiver_id, int amount) {
         }
     }
 
-    if (!receiver_found) {
+    if (receiver.active==0) {
         fclose(file);
         printf("Receiver not found\n");
         return 0;
@@ -244,7 +241,7 @@ int transfer_funds(char* user_id, char* receiver_id, int amount) {
     	// Lock the receiver
     	lock.l_start = receiver_position;
     	fcntl(fd, F_SETLKW, &lock);
-    	
+
     	//lock the sender
     	fcntl(fd, F_SETLKW, &lock);
     }

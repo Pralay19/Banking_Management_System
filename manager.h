@@ -22,71 +22,73 @@
 #include "allStructures.h"
 
 
-int activate_d_user(char*user_id, int ade){
+int activate_d_user(char* user_id, int ade) {
 
-	FILE *file = fopen("customers.txt", "r+");
+    FILE *file = fopen("customers.txt", "r+");
     if (file == NULL) {
         perror("Error opening file");
         return 0;
     }
+
     int fd = fileno(file);
     struct Customer who;
     struct flock lock;
 
-    long position=0;
-    int found=0;
+    long position = 0;
+    int found = 0;
+
     // Find user in the file
-    fseek(file, 0, SEEK_SET); 
+     
     while (fread(&who, sizeof(struct Customer), 1, file) == 1) {
         if (strcmp(who.userid, user_id) == 0) {
-        	found=1;
+            found = 1;
             position = ftell(file) - sizeof(struct Customer);
-
-
-            if(found==1 && ade==1){
-		    	return -1;//Already active
-		    }
-		    else if(found==0 && ade==2){
-		    	return -1;//Already deactivated
-		    }
-
-		    lock.l_type = F_WRLCK;
-		    lock.l_whence = SEEK_SET;
-		    lock.l_start = position;
-		    lock.l_len = sizeof(struct Customer);
-		    lock.l_pid = getpid();
-		    if (fcntl(fd, F_SETLKW, &lock) == -1) {
-		        perror("Error locking sender");
-		        fclose(file);
-		        return 0;
-		    }
-		    //1->activate
-		    //2->deactivate
-		    if(ade==2){
-		    	char type[100];
-		    	strcpy(type,"#");
-		    	strcpy(who.userid,type);
-		    }
-		    else{
-		    	strcpy(who.userid,user_id);
-		    }
-
-		    fseek(file, position, SEEK_SET);
-		    fwrite(&who, sizeof(struct Customer), 1, file);
-		        
-		    lock.l_start = position;  
-		    lock.l_type = F_UNLCK;
-		    fcntl(fd, F_SETLK, &lock);
-		    
-		    break;
-		    }
+            break;
+        }
     }
 
-    
+    if (found == 0) {
+        fclose(file);
+        printf("\nFAILED");
+        return 0;
+    }
+
+
+    // Lock the customer record for writing
+    lock.l_type = F_WRLCK;
+    lock.l_whence = SEEK_SET;
+    lock.l_start = position;
+    lock.l_len = sizeof(struct Customer);
+    lock.l_pid = getpid();
+    if (fcntl(fd, F_SETLKW, &lock) == -1) {
+        perror("Error locking customer record");
+        fclose(file);
+        return 0;
+    }
+
+    // 1 -> activate, 2 -> deactivate
+    if (ade == 2) {
+        who.active = 0;  // Deactivate
+    } else {
+        who.active = 1;  // Activate
+    }
+
+    // Update the customer record in the file
+    fseek(file, position, SEEK_SET);
+    if (fwrite(&who, sizeof(struct Customer), 1, file) != 1) {
+        perror("Error updating customer");
+        lock.l_type = F_UNLCK;
+        fcntl(fd, F_SETLK, &lock);
+        fclose(file);
+        return 0;
+    }
+
+    // Unlock the customer record
+    lock.l_type = F_UNLCK;
+    fcntl(fd, F_SETLK, &lock);
 
     fclose(file);
-    return found;
-
+    return 1;  // Success
 }
 
 
