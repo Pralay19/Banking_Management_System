@@ -230,7 +230,7 @@ void handle_client(int client_sock) {
     	}
         memset(buffer, 0, sizeof(buffer));
         int sessionid = add_session(userid);
-    	snprintf(buffer,sizeof(buffer),"\nLogin Successful !\nNamaskaram %s\n Session Id:%d\n",userid,sessionid);
+    	snprintf(buffer,sizeof(buffer),"\nLogin Successful !\n--------------\nNamaskaram %s\n Session Id:%d\n",userid,sessionid);
     	send(client_sock,buffer,sizeof(buffer),0);
     	memset(buffer, 0, sizeof(buffer));
 
@@ -387,7 +387,7 @@ void handle_client(int client_sock) {
                     //Invalid Choice
 
                 }
-
+                memset(buffer, 0, sizeof(buffer));
 
             }
 
@@ -405,11 +405,20 @@ void handle_client(int client_sock) {
                     memset(buffer, 0, sizeof(buffer));
                     recv(client_sock, buffer, sizeof(buffer), 0);
                     sscanf(buffer, "%s %s %s %s", new_customer_id, new_customer_password,name,mobile);
-                    add_new_customer(new_customer_id, new_customer_password,name,mobile);
-
-                    strcpy(buffer,"New Customer Added.");
-                    send(client_sock, buffer, sizeof(buffer), 0);
+                    int result=add_new_customer(new_customer_id, new_customer_password,name,mobile);
                     memset(buffer, 0, sizeof(buffer));
+                    if(result!=0){
+                        strcpy(buffer,"New Customer Added.");
+                        send(client_sock, buffer, sizeof(buffer), 0);
+
+                    }
+                    else{
+                        strcpy(buffer,"UserId already exists.");
+                        send(client_sock, buffer, sizeof(buffer), 0);
+                        
+                    }
+                    memset(buffer, 0, sizeof(buffer));
+                    
     			}
                 else if(choice==2){
                     //Modify Customer Details
@@ -439,9 +448,8 @@ void handle_client(int client_sock) {
                     
                     memset(buffer, 0, sizeof(buffer));
                     recv(client_sock,buffer,sizeof(buffer),0);
-
-                    memset(buffer, 0, sizeof(buffer));
                     sscanf(buffer,"%s",loanid);
+                    memset(buffer, 0, sizeof(buffer));
                     search_loan(loanid,buffer);
                     send(client_sock,buffer,sizeof(buffer),0);
 
@@ -556,6 +564,13 @@ void handle_client(int client_sock) {
                 }
                 else if(choice==2){
                     //Assign Loan Applications
+                    memset(buffer, 0, sizeof(buffer));
+                    char temp[2000];
+                    memset(temp, 0, sizeof(temp));
+                    view_all_loans(temp);
+                    send(client_sock,temp,sizeof(temp),0);
+
+
                     char employeeid[100];
                     char loanid[110];
                     memset(buffer, 0, sizeof(buffer));
@@ -679,10 +694,17 @@ void handle_client(int client_sock) {
                     //Modify Customer Details
                     int decision;
                     char change[100],cust_id[100];
+                    sscanf(buffer,"%s",cust_id);
+                    memset(buffer, 0, sizeof(buffer));
+                    recv(client_sock,buffer,sizeof(buffer),0);
+                    memset(buffer, 0, sizeof(buffer));
+
+                    view_customer(cust_id,buffer);
+                    send(client_sock,buffer,sizeof(buffer),0);
 
                     memset(buffer, 0, sizeof(buffer));
                     recv(client_sock,buffer,sizeof(buffer),0);
-                    sscanf(buffer,"%d %s %s",&decision,cust_id,change);
+                    sscanf(buffer,"%d %s",&decision,change);
                     modify_custm(cust_id,change,decision);
                     memset(buffer, 0, sizeof(buffer));
                     snprintf(buffer,sizeof(buffer),"Customer Details Modified!");

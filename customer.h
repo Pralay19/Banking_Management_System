@@ -224,27 +224,32 @@ int transfer_funds(char* user_id, char* receiver_id, int amount) {
     // Lock the sender
     lock.l_type = F_WRLCK;
     lock.l_whence = SEEK_SET;
-    lock.l_start = sender_position;
     lock.l_len = sizeof(struct Customer);
     lock.l_pid = getpid();
-    if (fcntl(fd, F_SETLKW, &lock) == -1) {
-        perror("Error locking sender");
-        fclose(file);
-        return 0;
-    }
-
-    // Lock the receiver
-    lock.l_start = receiver_position;
-    if (fcntl(fd, F_SETLKW, &lock) == -1) {
-        perror("Error locking receiver");
-        lock.l_start = sender_position;  
-        lock.l_type = F_UNLCK;
-        fcntl(fd, F_SETLK, &lock);
-        fclose(file);
-        return 0;
-    }
-
     
+
+    if(sender.userid<receiver.userid){
+    	//lock the sender
+    	lock.l_start = sender_position;
+    	fcntl(fd, F_SETLKW, &lock);
+
+    	// Lock the receiver
+    	lock.l_start = receiver_position;
+    	fcntl(fd, F_SETLKW, &lock);
+
+
+
+    }
+    else{
+    	// Lock the receiver
+    	lock.l_start = receiver_position;
+    	fcntl(fd, F_SETLKW, &lock);
+    	
+    	//lock the sender
+    	fcntl(fd, F_SETLKW, &lock);
+    }
+
+
     sender.balance -= amount;
     receiver.balance += amount;
 
@@ -274,12 +279,24 @@ int transfer_funds(char* user_id, char* receiver_id, int amount) {
         return 0;
     }
 
-    //Unlock both sender and receiver
-    lock.l_type = F_UNLCK;
-    lock.l_start = sender_position;
-    fcntl(fd, F_SETLK, &lock);
-    lock.l_start = receiver_position;
-    fcntl(fd, F_SETLK, &lock);
+    if(sender.userid<receiver.userid){
+    	lock.l_type = F_UNLCK;
+    	lock.l_start = sender_position;
+    	fcntl(fd, F_SETLK, &lock);
+
+    	lock.l_start = receiver_position;
+    	fcntl(fd, F_SETLK, &lock);
+
+    }
+    else{
+    	lock.l_type = F_UNLCK;
+    	lock.l_start = receiver_position;
+    	fcntl(fd, F_SETLK, &lock);
+
+    	lock.l_start = sender_position;
+    	fcntl(fd, F_SETLK, &lock);
+    }
+
 
     
     fclose(file);
@@ -291,6 +308,7 @@ int transfer_funds(char* user_id, char* receiver_id, int amount) {
     strcpy(debitCredit,"credit");
     update_transaction(receiver_id,type,user_id,debitCredit,amount,receiver.balance);
     return sender.balance;  
+
 }
 
 int change_password_custm(char*user_id,char*password){

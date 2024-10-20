@@ -23,9 +23,37 @@
 #include "customer.h"
 
 
+int auth_user(char *customer_id){
 
-void add_new_customer( char *customer_id, char *password,char *name,char *mobile) {
-    
+	FILE *file = fopen("customers.txt", "r");
+    if (file == NULL) {
+        perror("Error opening file");
+        return 0;
+    }
+
+    struct flock lock;
+    int fd = fileno(file);
+
+    struct Customer who;
+        fseek(file, 0, SEEK_SET);
+        while (fread(&who, sizeof(struct Customer), 1, file) == 1) {
+	        if (strcmp(who.userid, customer_id) == 0 ) {
+	            
+                fclose(file);
+	            return 1; // Authentication successful
+	        }
+    	}
+        fclose(file);
+        return 0;//Fail
+}
+
+int add_new_customer( char *customer_id, char *password,char *name,char *mobile) {
+
+
+    if(auth_user(customer_id)){
+
+    	return 0;
+    }
     struct Customer new_customer;
     strcpy(new_customer.userid, customer_id);
     strcpy(new_customer.password, password);
@@ -35,7 +63,7 @@ void add_new_customer( char *customer_id, char *password,char *name,char *mobile
     FILE *file = fopen("customers.txt", "r+");
     if (file == NULL) {
         perror("Error opening file");
-        return;
+        return -1;
     }
 
     struct flock lock;
@@ -57,9 +85,10 @@ void add_new_customer( char *customer_id, char *password,char *name,char *mobile
     fclose(file);
 
     initialize_transaction_file(customer_id);
+    return 1;
 }
 
-int view_assigned_loans(char *employeeid,char *buffer){
+int view_assigned_loans(char *employeeid,char *temp){
 
 	struct Loan loan;
 	struct flock lock;
@@ -68,7 +97,7 @@ int view_assigned_loans(char *employeeid,char *buffer){
         perror("Error opening transactions file");
         return -1; 
     }
-    strcpy(buffer,"");
+    strcpy(temp,"");
     int fd = fileno(file);
     fseek(file, 0, SEEK_SET);
     int found=0;
@@ -90,7 +119,7 @@ int view_assigned_loans(char *employeeid,char *buffer){
     while (fread(&loan, sizeof(struct Loan), 1, file) == 1) {
         if (strcmp(loan.employeeid, employeeid) == 0) {
         	found=1;
-            char loan_info[280];
+            char loan_info[500];
             char type[20];
             if(loan.status==1){
             	strcpy(type,"Approved");
@@ -101,12 +130,12 @@ int view_assigned_loans(char *employeeid,char *buffer){
             else if(loan.status==-1){
             	strcpy(type,"Rejected");
             }
-            snprintf(loan_info, sizeof(loan_info), "*UserID: %s, Loan Amount: %d, Status: %s\n",
+            snprintf(loan_info, sizeof(loan_info), "\n*UserID: %s, Loan Amount: %d, Status: %s\n",
                      loan.userid, loan.amount, type);
 
             size_t loan_info_len = strlen(loan_info);
                 
-            strcat(buffer + offset, loan_info);
+            strcat(temp + offset, loan_info);
             offset += loan_info_len;
            
         }
@@ -116,6 +145,62 @@ int view_assigned_loans(char *employeeid,char *buffer){
     fcntl(fd, F_SETLK, &lock);
     fclose(file);
     return found;
+}
+
+void process_loan(char*loanid,int decision){
+
+	struct Loan loan;
+	struct flock lock;
+	FILE *file = fopen("loans.txt", "r+");
+    if (file == NULL) {
+        perror("Error opening transactions file");
+        return ; 
+    }
+    
+    int fd = fileno(file);
+    fseek(file, 0, SEEK_SET);
+    long position=0;
+
+
+    while (fread(&loan, sizeof(struct Loan), 1, file) == 1) {
+        if (strcmp(loan.loanid, loanid) == 0) {
+        	position=ftell(file)-sizeof(struct Loan);
+
+
+        	lock.l_type = F_WRLCK;  
+		    lock.l_whence = SEEK_SET;
+		    lock.l_start = position;
+		    lock.l_len = sizeof(struct TransactionFile);  
+		    lock.l_pid = getpid();
+
+		    if (fcntl(fd, F_SETLKW, &lock) == -1) {
+		        perror("Error locking file");
+		        fclose(file);
+		        return ;  
+		    }
+
+		    if(decision==1){
+		    	loan.status=1;
+		    }
+		    else{
+		    	loan.status=-1;
+		    }
+
+
+		    fseek(file,position,SEEK_SET);
+		    if (fwrite(&loan, sizeof(struct Loan), 1, file) != 1) {
+		    printf("\nError writing new loan to file\n");
+		    }
+		    fflush(file);
+		    lock.l_type = F_UNLCK;
+		    fcntl(fd, F_SETLKW, &lock);
+        	break;
+        }
+    }
+
+    
+
+    fclose(file);
 }
 
 void change_password_emp(char*user_id,char*password){
