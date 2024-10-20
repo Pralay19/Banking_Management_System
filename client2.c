@@ -474,13 +474,18 @@ void customer_program(int sock){
 			    }
 
 			    printf("\nYour Transactions:\n");
-			    for (int i = 0; i < 100; i++) {
-			        if (transArray[i].transac_id != 0) {
-			            printf("*Transaction ID: %d| Type: %s| Receiver ID: %s| Debit/Credit: %s| Amount: %d| Balance After: %d\n",
-			                   transArray[i].transac_id, transArray[i].transaction_type, transArray[i].receiver_id,
-			                   transArray[i].debitCredit, transArray[i].amount, transArray[i].balance_after);
-			        }
-			    }
+
+			    printf("\n%-15s | %-15s | %-20s | %-15s | %-10s | %-15s\n", 
+				       "Transaction ID", "Type", "Receiver ID", "Debit/Credit", "Amount", "Balance After");
+				printf("------------------------------------------------------------------------------------------------------------------------\n");
+
+				for (int i = 0; i < 100; i++) {
+				    if (transArray[i].transac_id != 0) {  // Only print valid transactions
+				        printf("%-15d | %-15s | %-20s | %-15s | %-10d | %-15d\n", 
+				               transArray[i].transac_id, transArray[i].transaction_type, transArray[i].receiver_id, 
+				               transArray[i].debitCredit, transArray[i].amount, transArray[i].balance_after);
+				    }
+				}
 			}
 			else{
 				recv(sock,buffer,sizeof(buffer),0);
