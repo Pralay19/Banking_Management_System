@@ -330,4 +330,65 @@ void view_customer(char*user_id,char*buffer){
     fclose(file);
 }
 
+int search_loan(char*loanid,char*buffer){
+
+	struct Loan loan;
+	struct flock lock;
+	FILE *file = fopen("loans.txt", "r");
+    if (file == NULL) {
+        perror("Error opening transactions file");
+        return 0; 
+    }
+    strcpy(buffer,"");
+    int fd = fileno(file);
+    fseek(file, 0, SEEK_SET);
+    long position=0;
+    int found=0;
+
+    while (fread(&loan, sizeof(struct Loan), 1, file) == 1) {
+        if (strcmp(loan.loanid, loanid) == 0) {
+        	found=1;
+        	position=ftell(file)-sizeof(struct Loan);
+        	break;
+        }
+    }
+
+    if(found==0){
+    	fclose(file);
+    	return 0;
+    }
+
+    lock.l_type = F_RDLCK;  
+    lock.l_whence = SEEK_SET;
+    lock.l_start = position;
+    lock.l_len = sizeof(struct TransactionFile);  
+    lock.l_pid = getpid();
+
+    if (fcntl(fd, F_SETLKW, &lock) == -1) {
+        perror("Error locking file");
+        fclose(file);
+        return 0;  
+    }
+    char type[20];
+    if(loan.status==1){
+    	strcpy(type,"Approved");
+    }
+    else if(loan.status==2){
+    	strcpy(type,"Processing");
+    }
+    else if(loan.status==-1){
+    	strcpy(type,"Rejected");
+    }
+    char info[600];
+	snprintf(info,sizeof(info),"Loan ApplicationId:%s\nCustomer userID:%s\nAssigned Employee:%s\nAmount:%d\nStatus:%s\n",loan.loanid,loan.userid,loan.employeeid,loan.amount,type);
+
+    size_t info_len = strlen(info);
+    strcat(buffer, info);
+
+    lock.l_type = F_UNLCK;
+    fcntl(fd, F_SETLK, &lock);
+    fclose(file);
+    return 1;
+}
+
 #endif

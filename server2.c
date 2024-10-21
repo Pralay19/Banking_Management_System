@@ -462,7 +462,14 @@ void handle_client(int client_sock) {
                     recv(client_sock,buffer,sizeof(buffer),0);
                     sscanf(buffer,"%s",loanid);
                     memset(buffer, 0, sizeof(buffer));
-                    search_loan(loanid,buffer);
+                    int result=search_loan(loanid,buffer);
+                    if(result==0){
+                        snprintf(buffer,sizeof(buffer),"\nLoanId not found.");
+                        send(client_sock,buffer,sizeof(buffer),0);
+                        memset(buffer,0,sizeof(buffer));
+                        continue;
+                    }
+                    
                     send(client_sock,buffer,sizeof(buffer),0);
 
                     memset(buffer, 0, sizeof(buffer));

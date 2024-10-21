@@ -282,7 +282,12 @@ void employee_program(int sock){
 
         	memset(buffer,0,sizeof(buffer));
         	recv(sock,buffer,sizeof(buffer),0);
+
         	printf("\n%s",buffer);
+        	if(strstr(buffer,"not")){
+        		memset(buffer,0,sizeof(buffer));
+        		continue;
+        	}
         	printf("\nOptions:\n1->Approve the loan\n2->Reject the loan");
         	scanf("%d",&decision);
         	memset(buffer,0,sizeof(buffer));
