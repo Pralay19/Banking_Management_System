@@ -244,6 +244,8 @@ void handle_client(int client_sock) {
         int sessionid = add_session(userid);
     	snprintf(buffer,sizeof(buffer),"\nLogin Successful !\n--------------\nNamaskaram %s\n Session Id:%d\n",userid,sessionid);
     	send(client_sock,buffer,sizeof(buffer),0);
+
+        usleep(200000);//making it processing
     	memset(buffer, 0, sizeof(buffer));
 
     	if(role==1){

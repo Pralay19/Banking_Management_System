@@ -72,6 +72,23 @@ void get_password(char *password) {
 
 
 
+void show_loader() {
+    const char* car = "🚗"; 
+    int screenWidth = 70;    
+
+    printf("\e[?25l");
+
+    for (int position = 0; position < screenWidth; position++) {
+        
+        printf("\r%*s%s", position, "", car);
+        fflush(stdout);  
+        usleep(150000);  
+    }
+    printf("\e[?25h\n");
+}
+    
+
+
 
 
 
@@ -677,6 +694,11 @@ int main() {
         
         send(sock, buffer, strlen(buffer), 0);
         memset(buffer, 0, sizeof(buffer));
+
+        printf("\nLogging in...\n");
+        show_loader();
+
+
         recv(sock,buffer,sizeof(buffer),0);
         
         printf("\n%s",buffer);
