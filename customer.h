@@ -243,6 +243,7 @@ int transfer_funds(char* user_id, char* receiver_id, int amount) {
     	fcntl(fd, F_SETLKW, &lock);
 
     	//lock the sender
+        lock.l_start=sender_position;
     	fcntl(fd, F_SETLKW, &lock);
     }
 
