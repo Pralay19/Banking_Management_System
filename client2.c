@@ -508,6 +508,7 @@ void customer_program(int sock){
 				               transArray[i].debitCredit, transArray[i].amount, transArray[i].balance_after);
 				    }
 				}
+                memset(transArray, 0, sizeof(transArray));
 			}
 			else{
 				recv(sock,buffer,sizeof(buffer),0);
