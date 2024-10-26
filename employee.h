@@ -131,8 +131,8 @@ int view_assigned_loans(char *employeeid,char *temp){
             else if(loan.status==-1){
             	strcpy(type,"Rejected");
             }
-            snprintf(loan_info, sizeof(loan_info), "\n*UserID: %s, Loan Amount: %d, Status: %s\n",
-                     loan.userid, loan.amount, type);
+            snprintf(loan_info, sizeof(loan_info), "\n*UserID: %s,ApplicationId: %s, Loan Amount: %d, Status: %s\n",
+                     loan.userid,loan.loanid ,loan.amount, type);
 
             size_t loan_info_len = strlen(loan_info);
                 

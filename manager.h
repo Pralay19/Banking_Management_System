@@ -271,7 +271,7 @@ void view_all_loans(char *temp){
         else if(loan.status==-1){
             strcpy(type,"Rejected");
         }
-        snprintf(info,sizeof(info),"\nLoan ApplicationId: %s  UserId: %s  Loan Amount: $%d  Current Status: %s assigned to -> EmployeeId: %s\n",loan.loanid,loan.userid,loan.amount,type,loan.employeeid);
+        snprintf(info,sizeof(info),"\nLoan ApplicationId: %s||  UserId: %s||  Loan Amount: $%d||  Current Status: %s|| Assigned to -> EmployeeId: %s\n",loan.loanid,loan.userid,loan.amount,type,loan.employeeid);
 
         size_t info_len = strlen(info);
                 
